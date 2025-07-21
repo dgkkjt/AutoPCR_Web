@@ -26,8 +26,8 @@ interface UnitData {
     ex?: number;
     unique_equip?: string;
     unique_equip2?: string;
-    memory?: number;
-    pure_memory?: number;
+    memory?: string;
+    pure_memory?: string;
 }
 interface ExcelData {
     user_info: UserInfo;
@@ -132,7 +132,7 @@ export function ExcelExport({ logContent, fileName = 'box_data' }: ExcelExportPr
                             addCellToSheet(createCell(attr ?? '-', 'center'), userIndex + 2, colOffset++)
                         );
                     } else {
-                        for (let i = 0; i < 11; i++) addCellToSheet(createCell('-', 'center'), userIndex + 2, colOffset++);
+                        for (let i = 0; i < 12; i++) addCellToSheet(createCell('-', 'center'), userIndex + 2, colOffset++);
                     }
                 });
             });
