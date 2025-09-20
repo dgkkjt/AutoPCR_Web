@@ -143,6 +143,7 @@ export function BoxDataTable({ logContent }: BoxDataTableProps) {
         { id: 'rarity', name: '星级' },
         { id: 'level', name: '等级' },
         { id: 'rank', name: 'Rank' },
+        { id: 'equip', name: '装备' },
         { id: 'ub', name: 'UB' },
         { id: 'sk1', name: 'S1' },
         { id: 'sk2', name: 'S2' },
