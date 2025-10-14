@@ -7,6 +7,7 @@ import { MemoryTable } from './MemoryTable';
 import { parseMemoryTable } from './MemoryUtils';
 import { BoxDataTable } from './BoxDataTable';
 import { ExcelExport } from './ExcelExport';
+import { TalentDataTable } from './TalentDataTable';
 
 interface SingleResultProps {
     resultData: ModuleResultInterface | null;
@@ -34,10 +35,12 @@ function SingleResultTable({ resultData }: SingleResultProps) {
     const excelModules = ['导出box练度excel'];
     // 检查是否为需要显示角色练度表格的模块
     const boxDataModules = ['查box（多选）'];
+    const talentDataModules = ['查属性练度'];
 
     const isTableModule = resultData?.name ? tableModules.includes(resultData.name) : false;
     const isExcelModule = resultData?.name ? excelModules.includes(resultData.name) : false;
     const isBoxDataModule = resultData?.name ? boxDataModules.includes(resultData.name) : false;
+    const isTalentDataModules = resultData?.name ? talentDataModules.includes(resultData.name) : false;
 
     const tableData = isTableModule && resultData?.log ? parseMemoryTable(resultData.log) : { items: [], accountNames: [] };
 
@@ -60,7 +63,7 @@ function SingleResultTable({ resultData }: SingleResultProps) {
                             <Td>状态</Td>
                             <Td>{resultData?.status}</Td>
                         </Tr>
-                        {!isTableModule && !isBoxDataModule && (
+                        {!isTableModule && !isBoxDataModule && !isTalentDataModules && (
                             <Tr>
                                 <Td>结果</Td>
                                 <Td style={{ whiteSpace: 'pre-wrap' }}>
@@ -79,6 +82,7 @@ function SingleResultTable({ resultData }: SingleResultProps) {
 
             {isTableModule && tableData.items.length > 0 && <MemoryTable data={tableData} />}
             {isBoxDataModule && <BoxDataTable logContent={resultData?.log} />}
+            {isTalentDataModules && <TalentDataTable logContent={resultData?.log} />}
         </>
     );
 }
