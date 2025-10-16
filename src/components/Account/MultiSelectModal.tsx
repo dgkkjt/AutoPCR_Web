@@ -1,6 +1,6 @@
 import { Candidate, ConfigValue } from '@interfaces/Module';
-import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Button, Input, Flex, Box, Text, useColorModeValue, IconButton } from '@chakra-ui/react';
-import { useState } from 'react';
+import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Button, Input, Flex, Box, Text, IconButton, useColorModeValue } from '@chakra-ui/react';
+import { useRef, useState } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { CloseIcon } from '@chakra-ui/icons';
 
@@ -12,13 +12,25 @@ interface MultiSelectModalProps {
 
 const multiSelectModal = NiceModal.create(({ candidates, value }: MultiSelectModalProps) => {
     const modal = useModal();
-    const bg = useColorModeValue('gray.100', 'gray.700');
 
+    const hoverBg = useColorModeValue('blue.100', 'blue.700');
+    const innerHoverBg = useColorModeValue('red.100', 'red.700');
     const [selectedUnits, setSelectedUnits] = useState<ConfigValue[]>(value);
     const [availableUnits, setAvailableUnits] = useState<Candidate[]>(candidates.filter((u) => !value.includes(u.value)));
     const [searchAllText, setSearchAllText] = useState('');
     const [searchSelectedText, setSearchSelectedText] = useState('');
     const [draggedUnit, setDraggedUnit] = useState<ConfigValue | null>(null);
+
+    const lastVisibleRef = useRef(false);
+
+    if (modal.visible && !lastVisibleRef.current) {
+        setSelectedUnits(value);
+        setAvailableUnits(candidates.filter(u => !value.includes(u.value)));
+        setSearchAllText('');
+        setSearchSelectedText('');
+    }
+
+    lastVisibleRef.current = modal.visible;
 
     const handleAdd = (id: ConfigValue) => {
         if (!selectedUnits.includes(id)) {
@@ -78,7 +90,7 @@ const multiSelectModal = NiceModal.create(({ candidates, value }: MultiSelectMod
         setAvailableUnits(candidates);
     };
 
-    const filteredAvailable = availableUnits.filter((u) => String(u.value).includes(searchAllText) || u.tags?.some((tag) => tag.toLowerCase().includes(searchAllText.toLowerCase())));
+    const filteredAvailable = availableUnits.filter((u) => String(u.value).includes(searchAllText) || String(u.display).includes(searchAllText) || u.tags?.some((tag) => tag.toLowerCase().includes(searchAllText.toLowerCase())));
 
     const selectedObjects = selectedUnits.map((id) => {
         const u = candidates.find((u) => u.value === id);
@@ -99,11 +111,22 @@ const multiSelectModal = NiceModal.create(({ candidates, value }: MultiSelectMod
                 <ModalBody>
                     <Flex gap={4}>
                         <Box flex={1}>
-                            <Text mb={2}>未选择角色 ({availableUnits.length})</Text>
+                            <Text mb={2}>未选择 ({availableUnits.length})</Text>
                             <Input placeholder="搜索" mb={2} value={searchAllText} onChange={(e) => setSearchAllText(e.target.value)} />
-                            <Box maxH="600px" overflowY="auto" bg={bg} p={2} borderRadius="md">
+                            <Box maxH="55vh" overflowY="auto" p={2} borderRadius="md">
+                                <Button
+                                    size="sm"
+                                    colorScheme="green"
+                                    onClick={() => {
+                                        const allValues = filteredAvailable.map(u => u.value);
+                                        setSelectedUnits([...new Set([...selectedUnits, ...allValues])]);
+                                        setAvailableUnits(availableUnits.filter(u => !allValues.includes(u.value)));
+                                    }}
+                                >
+                                    全选
+                                </Button>
                                 {filteredAvailable.map((u, id) => (
-                                    <Box key={id} p={1} cursor="pointer" _hover={{ bg: 'blue.100' }} onClick={() => handleAdd(u.value)}>
+                                    <Box key={id} p={1} cursor="pointer" _hover={{ bg: hoverBg }} onClick={() => handleAdd(u.value)}>
                                         {u.nickname ? u.nickname : u.display}
                                     </Box>
                                 ))}
@@ -113,10 +136,10 @@ const multiSelectModal = NiceModal.create(({ candidates, value }: MultiSelectMod
                         <Box flex={1}>
                             <Text mb={2}>已选择 ({selectedUnits.length})</Text>
                             <Input placeholder="搜索" mb={2} value={searchSelectedText} onChange={(e) => setSearchSelectedText(e.target.value)} />
-                            <Box maxH="600px" overflowY="auto" bg={bg} p={2} borderRadius="md">
+                            <Box maxH="55vh" overflowY="auto" p={2} borderRadius="md">
                                 <Flex mb={2} alignItems="center" justifyContent="space-between">
                                     <Text fontSize="xs" color="gray.500">
-                                        提示：拖拽角色可调整顺序
+                                        提示：拖拽可调整顺序
                                     </Text>
                                     <Button onClick={handleClearAll} size={'sm'} colorScheme="red">
                                         清空
@@ -126,7 +149,7 @@ const multiSelectModal = NiceModal.create(({ candidates, value }: MultiSelectMod
                                 {filteredSelected.map((u) => {
                                     const actualIndex = selectedUnits.indexOf(u.value);
                                     return (
-                                        <Flex key={String(u.value)} alignItems="center" justifyContent="space-between" _hover={{ bg: 'red.100' }}>
+                                        <Flex key={String(u.value)} alignItems="center" justifyContent="space-between" _hover={{ bg: innerHoverBg }}>
                                             <Box
                                                 p={1}
                                                 cursor="grab"
