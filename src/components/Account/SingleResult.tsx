@@ -3,6 +3,7 @@ import { ModuleResult as ModuleResultInterface } from '@/interfaces/ModuleResult
 import { Table, Thead, Tbody, Tr, Th, TableContainer, useColorModeValue, Td, useToast } from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
+import { TalentDataTable } from './TalentDataTable';
 import { TableResultWrapper } from './TableResultWrapper';
 
 interface SingleResultProps {
@@ -25,7 +26,10 @@ export function SingleResult({ url }: { url: string }) {
 }
 
 function SingleResultTable({ resultData }: SingleResultProps) {
+    const talentDataModules = ['查属性练度'];
     const haveTable = resultData?.table?.data?.length ?? 0 > 0 ? true : false;
+    const isTalentDataModules = resultData?.name ? talentDataModules.includes(resultData.name) : false;
+    
     return (
         <>
             <TableContainer rounded={'lg'} bg={useColorModeValue('white', 'gray.700')} boxShadow={'lg'} mb={haveTable ? 4 : 0}>
@@ -45,7 +49,7 @@ function SingleResultTable({ resultData }: SingleResultProps) {
                             <Td>状态</Td>
                             <Td>{resultData?.status}</Td>
                         </Tr>
-                        {haveTable && resultData?.table && <Tr>
+                        {haveTable && resultData?.table && !isTalentDataModules && <Tr>
                             <Td>表格</Td>
                             <Td>
                                 <TableResultWrapper {...resultData.table} />
@@ -61,6 +65,7 @@ function SingleResultTable({ resultData }: SingleResultProps) {
                     </Tbody>
                 </Table>
             </TableContainer>
+             {isTalentDataModules && <TalentDataTable logContent={resultData?.log} />}
         </>
     );
 }
