@@ -31,6 +31,16 @@
         body {
           -webkit-text-size-adjust: 100%;
         }
+
+        /* 表单控件：iOS 上 font-size < 16px 会在聚焦时自动放大整页，
+           这里统一抬到 16px 并把可点高度兜到 44px（触控基线）。
+           框架内的 switch/checkbox 走各自的 minH，这里排除掉。 */
+        input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+        select,
+        textarea {
+          font-size: 16px;
+          min-height: 44px;
+        }
       }
     </style>
   </head>

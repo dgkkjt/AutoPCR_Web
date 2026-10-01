@@ -15,7 +15,13 @@ export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
       props
 
     return (
-      <ChakraSwitch.Root ref={rootRef} colorPalette={colorPalette} {...rest}>
+      // 触控基线：Root 是 label，整行可点；手机上把可点高度兜到 44px
+      <ChakraSwitch.Root
+        ref={rootRef}
+        colorPalette={colorPalette}
+        minH={{ base: "44px", md: undefined }}
+        {...rest}
+      >
         <ChakraSwitch.HiddenInput ref={ref} {...inputProps} />
         <ChakraSwitch.Control>
           <ChakraSwitch.Thumb>
