@@ -25,7 +25,7 @@ import { postRegister } from '@api/Register'
 import { toaster } from '../../components/ui/toaster'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { clearCredential, isSecureContext, loadCredential, saveCredential } from '@/utils/credentialStore'
+import { clearCredential, loadCredential, saveCredential } from '@/utils/credentialStore'
 import { safeGetItem, safeRemoveItem, safeSetItem } from '@components/Account/accountShared'
 
 interface Inputs {
@@ -80,16 +80,8 @@ export default function LoginWithPasswordComponent() {
             });
             return;
         }
-        if (saved.mode === 'obfuscated' && !isSecureContext()) {
-            // 说清楚原因：不是浏览器不支持，而是 http:// 不是安全上下文，
-            // crypto.subtle 不可用 → 只能降级为混淆。给 HTTPS 这条明路。
-            toaster.create({
-                type: 'warning',
-                title: '已保存，但仅做了混淆处理',
-                description: '当前是 HTTP 访问，浏览器禁用加密能力。给站点启用 HTTPS 后会自动升级为真加密',
-                duration: 6000,
-            });
-        }
+        // 降级到混淆档（http:// 环境）时不弹提示：用户勾选「记住我」就是想要记住，
+        // 功能正常，弹警告只是噪音。HTTPS 下会自动升为真加密，同样静默。
     }
 
     const handleLogin: SubmitHandler<Inputs> = async (values) => {

@@ -55,11 +55,6 @@ function hasSubtle(): boolean {
     return typeof crypto !== 'undefined' && !!crypto.subtle && !!crypto.subtle.generateKey;
 }
 
-/** 当前是否为安全上下文（https / localhost / file） */
-export function isSecureContext(): boolean {
-    return typeof window !== 'undefined' && window.isSecureContext === true;
-}
-
 function hasIndexedDB(): boolean {
     return typeof indexedDB !== 'undefined' && indexedDB !== null;
 }
@@ -204,13 +199,6 @@ function parseCredentialJson(text: string): StoredCredential | null {
     const parsed = JSON.parse(text) as Partial<StoredCredential>;
     if (typeof parsed?.qq !== 'string' || typeof parsed?.password !== 'string') return null;
     return { qq: parsed.qq, password: parsed.password };
-}
-
-/** 当前环境实际会用到哪一档（用于提示文案，不产生副作用） */
-export async function detectCredentialMode(): Promise<CredentialMode | 'unavailable'> {
-    if (hasSubtle() && hasIndexedDB()) return 'encrypted';
-    if (hasIndexedDB()) return 'obfuscated';
-    return 'unavailable';
 }
 
 /**
