@@ -226,6 +226,9 @@ export default function Nav() {
                     overflowX="hidden"
                     p={3}
                     zIndex={1}
+                    // 浮层（日程通知等）以此为边界：不钻到顶部 AppBar 底下、也不被底部 Tab 挡。
+                    // 用属性而不是 class，方便组件侧用 querySelector 取到这一层
+                    data-popover-boundary
                     css={{ WebkitOverflowScrolling: 'touch' }}
                 >
                     <ScheduleNotifyWatcher />
@@ -273,7 +276,8 @@ export default function Nav() {
                 </Flex>
             </Box>
 
-            <Flex p={4} flex={1} overflow={'auto'} flexDirection={'column'} zIndex={1}>
+            {/* data-popover-boundary：浮层以此为界，不盖住顶栏/越出内容区（见 ui/popoverBoundary.ts） */}
+            <Flex p={4} flex={1} overflow={'auto'} flexDirection={'column'} zIndex={1} data-popover-boundary>
                 <ScheduleNotifyWatcher />
                 <Outlet />
             </Flex>

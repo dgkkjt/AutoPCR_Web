@@ -6,6 +6,36 @@ import { ConfigValue, ModuleResponse } from '@interfaces/Module';
 import {AccountInfo, ResultInfo, RoleInfo, UserInfo, UserInfoResponse} from '@interfaces/UserInfo';
 import {useEffect, useState} from "react";
 
+/**
+ * 账号列表 / 单个账号的 stale-while-revalidate 缓存
+ *
+ * 动机：首页每次挂载都重新 getUserInfo、详情页的 route loader 每次都重新 getAccount，
+ * 于是「详情 → 首页」「首页 → 详情」每次都要等一个网络往返才开始渲染内容。
+ * 这两份数据在一次会话内的变化只来自本端的写操作，缓存 + 写操作失效即可保证正确性。
+ *
+ * 语义：getUserInfo / getAccount 永远发请求并把新值写回缓存；peek* 只读缓存不请求，
+ * 供页面首帧立即渲染（随后照常被真实请求刷新，属于 SWR 的 stale 阶段）。
+ */
+let userInfoCache: UserInfoResponse | null = null;
+const accountInfoCache = new Map<string, AccountResponse>();
+
+/** 读缓存的用户信息（不发起请求）；无缓存返回 null */
+export function peekUserInfo(): UserInfoResponse | null {
+  return userInfoCache;
+}
+
+/** 读缓存的账号详情（不发起请求）；无缓存返回 null */
+export function peekAccount(alias: string): AccountResponse | null {
+  return accountInfoCache.get(alias) ?? null;
+}
+
+/** 账号信息类写操作后统一失效：下一次 peek 拿不到旧值，页面会走真实请求 */
+export function invalidateAccountInfoCache(alias?: string): void {
+  userInfoCache = null;
+  if (alias === undefined) accountInfoCache.clear();
+  else accountInfoCache.delete(alias);
+}
+
 const ACCOUNT_CONFIG_CACHE_LIMIT = 24;
 const accountConfigCache = new Map<string, ModuleResponse>();
 const accountConfigRequests = new Map<string, Promise<ModuleResponse>>();
@@ -93,11 +123,14 @@ export async function putClanForbid(accs: string) {
 
 export async function getUserInfo() {
   const response = await API.get<UserInfoResponse>('/account');
+  // 载荷不完整（如 200 但缺 accounts）时不入缓存，避免把残缺数据当成「真没账号」渲染
+  if (response.data?.accounts) userInfoCache = response.data;
   return response.data;
 }
 
 export async function putUserInfo(userInfo: UserInfoResponse) {
   const response = await API.put<DefaultResponse>('/account', userInfo);
+  invalidateAccountInfoCache();
   return response.data;
 }
 
@@ -110,6 +143,7 @@ export async function postAccountImport(file: File) {
     },
   });
   clearCachedAccountConfigs();
+  invalidateAccountInfoCache();
   return response.data;
 }
 
@@ -117,18 +151,21 @@ export async function postAccount(alias: string) {
   const response = await API.post<DefaultResponse>(`/account`, {
     alias: alias,
   });
+  invalidateAccountInfoCache();
   return response.data;
 }
 
 export async function deleteAccount() {
   const response = await API.delete<DefaultResponse>(`/`);
   clearCachedAccountConfigs();
+  invalidateAccountInfoCache();
   return response.data;
 }
 
 export async function clearAccounts() {
   const response = await API.delete<DefaultResponse>(`/account`);
   clearCachedAccountConfigs();
+  invalidateAccountInfoCache();
   return response.data;
 }
 
@@ -142,12 +179,14 @@ export async function postAccountSyncConfig(alias: string) {
 
 export async function getAccount(alias: string) {
   const response = await API.get<AccountResponse>(`/account/${encodeURIComponent(alias)}`);
+  if (response.data) accountInfoCache.set(alias, response.data);
   return response.data;
 }
 
 export async function delAccount(alias: string) {
   const response = await API.delete<DefaultResponse>(`/account/${encodeURIComponent(alias)}`);
   clearCachedAccountConfigs(alias);
+  invalidateAccountInfoCache(alias);
   return response.data;
 }
 
@@ -158,6 +197,8 @@ export async function putAccount(alias: string, account: string, password: strin
     channel: channel,
 	batch_accounts: batch_accounts
   });
+  // 改名/改密码/改渠道都会改变账号详情，缓存必须失效，否则详情页会先渲染旧值
+  invalidateAccountInfoCache(alias);
   return response.data;
 }
 

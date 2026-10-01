@@ -37,6 +37,7 @@ export function AppBar({
     return (
         <Flex
             as="header"
+            data-app-bar
             flex="0 0 auto"
             align="center"
             gap={1}

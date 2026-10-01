@@ -13,6 +13,7 @@ import { API } from '@api/APIUtils';
 import { safeGetItem, safeSetItem } from './accountShared';
 import { deferToIdle } from '@/utils/deferToIdle';
 import { Checkbox } from '../../components/ui/checkbox';
+import { popoverBoundary } from '../ui/popoverBoundary';
 
 /** 后端 schedule_entries 单条（与半月刊渲染同源） */
 export interface ScheduleEntry {
@@ -322,7 +323,18 @@ export function ScheduleNotifySettings() {
     const allCategories = useMemo(() => [...CATEGORY_ORDER], []);
 
     return (
-        <Popover.Root lazyMount positioning={{ placement: 'bottom-end', gutter: 4 }}>
+        <Popover.Root
+            lazyMount
+            positioning={{
+                placement: 'bottom-end',
+                gutter: 8,
+                // 以壳层内容区为边界，浮层不再钻到 AppBar 底下（原来「正在进行」被顶栏盖住）
+                boundary: popoverBoundary,
+                overflowPadding: 8,
+                // 由库按可用空间写 maxWidth / maxHeight，窄屏也不会横向溢出
+                fitViewport: true,
+            }}
+        >
             <Popover.Trigger asChild>
                 <Box
                     borderWidth="1px"
@@ -346,6 +358,8 @@ export function ScheduleNotifySettings() {
                 </Box>
             </Popover.Trigger>
             <Popover.Positioner>
+                {/* maxW/maxH 由 fitViewport 按可用空间写成内联样式（优先级高于这里的类），
+                    这里的 maxH 只是库未生效时的兜底 */}
                 <Popover.Content width="340px" maxH="70vh" display="flex" flexDirection="column" overflow="hidden" zIndex={1400}>
                     <Popover.Body ref={scrollBodyRef} p={3} overflowY="auto" flex="1 1 auto" minH="0">
                         <Stack gap={3}>

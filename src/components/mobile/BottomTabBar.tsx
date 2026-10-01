@@ -48,6 +48,7 @@ export function BottomTabBar() {
     return (
         <Flex
             as="nav"
+            data-tab-bar
             flex="0 0 auto"
             align="stretch"
             bg="bg.panel"
@@ -58,8 +59,12 @@ export function BottomTabBar() {
             }}
         >
             {tabs.map((tab) => {
-                // to 形如 '/daily/account/'，下钻页 '/daily/account/xxx' 用前缀即可命中
+                // to 形如 '/daily/account/'，下钻页 '/daily/account/xxx' 用前缀命中 → 详情页也高亮「首页」
                 const isActive = pathname === tab.to || pathname.startsWith(tab.to)
+                // 但「已高亮」不等于「不用跳」：在详情页时前缀命中会让 isActive 为真，
+                // 若据此提前 return，点「首页」就再也回不到列表页了（实测路径不变）。
+                // 只有正好停在目标路径本身才跳过跳转。
+                const isSameLocation = pathname === tab.to
                 return (
                     <Flex
                         as="button"
@@ -77,7 +82,7 @@ export function BottomTabBar() {
                         aria-label={tab.label}
                         aria-current={isActive ? 'page' : undefined}
                         onClick={() => {
-                            if (isActive) return;
+                            if (isSameLocation) return;
                             void navigate({ to: tab.to });
                         }}
                         _active={{ bg: 'bg.subtle' }}

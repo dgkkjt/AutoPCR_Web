@@ -14,7 +14,7 @@ import {
 import { FiBook, FiCheck, FiGrid, FiKey, FiLayers, FiList, FiMoreHorizontal, FiPlus, FiStar, FiTarget, FiUpload, FiUserMinus, FiUserPlus, FiUserX } from 'react-icons/fi';
 import React, { ChangeEvent, useMemo, useRef } from 'react';
 import { Skeleton, SkeletonText } from '../../components/ui/skeleton';
-import { clearAccounts, delAccount, deleteAccount, getAccount, getAccountConfig, getUserInfo, postAccount, postAccountAreaSingle, postAccountImport, putUserInfo } from '@api/Account';
+import { clearAccounts, delAccount, deleteAccount, getAccount, getAccountConfig, getUserInfo, peekUserInfo, postAccount, postAccountAreaSingle, postAccountImport, putUserInfo } from '@api/Account';
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import type { ResultInfo } from '@interfaces/UserInfo';
@@ -61,7 +61,8 @@ function collectOccupiedNames(accounts: AccountInfoInterface[] | undefined, self
 
 
 export function DashBoard() {
-    const [userInfo, setUserInfo] = useState<UserInfoResponse>();
+    // 有缓存就先渲染（回访首页不再等一个网络往返），随后的 effect 照常拉新值覆盖
+    const [userInfo, setUserInfo] = useState<UserInfoResponse | undefined>(() => peekUserInfo() ?? undefined);
     // 账号列表加载失败态：与「真没账号」区分（后者引导建号，前者给重试）。Area 的 error 态 + retryTick 同款
     const [loadError, setLoadError] = useState(false);
     const [retryTick, setRetryTick] = useState(0);

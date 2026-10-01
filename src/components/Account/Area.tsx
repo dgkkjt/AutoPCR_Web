@@ -8,6 +8,7 @@ import Module from './Module';
 import { ConfigValue, ModuleResponse } from '@interfaces/Module';
 import { Skeleton } from '../../components/ui/skeleton';
 import Toc from './Toc';
+import DraggableFab from '@components/mobile/DraggableFab';
 import { getAccountConfig } from '@api/Account';
 import { toaster } from '../../components/ui/toaster';
 
@@ -228,22 +229,17 @@ export default function Area({ alias, keys: key, areaName, showOnlyFav = false }
 
             {/* 手机形态：目录改右下悬浮按钮 + 底部面板，避免遮挡正文 */}
             {isMobile ? (
-                <IconButton
+                <DraggableFab
                     aria-label="目录"
                     colorPalette="blue"
-                    position="fixed"
-                    right="4"
-                    bottom="24"
                     size="lg"
                     minW="52px"
                     minH="52px"
-                    rounded="full"
-                    shadow="xl"
-                    zIndex={100}
+                    storageKey="autopcr_toc_fab_pos"
                     onClick={() => void openMobileToc()}
                 >
                     <FiCompass />
-                </IconButton>
+                </DraggableFab>
             ) : (
             <Flex
                 position="fixed"

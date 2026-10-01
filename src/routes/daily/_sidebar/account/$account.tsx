@@ -9,7 +9,7 @@ import Area, { clearAreaConfigCache } from '@components/Account/Area';
 import ConfigImportExport from '@components/Account/ConfigImportExport.tsx';
 import Info from '@components/Account/Info';
 import { createFileRoute } from '@tanstack/react-router';
-import { getAccount, getAccountDailyResultList, postAccountAreaDaily } from '@api/Account';
+import { getAccount, getAccountDailyResultList, postAccountAreaDaily, peekAccount } from '@api/Account';
 import { POPUP_FLAG_KEY, loadPopupFlag, emitDailyFinished, textFitPadding, safeSetItem, getDisplayName, busyAccountsRef, patchBusy } from '@components/Account/accountShared';
 import { getErrorDescription } from '@components/Account/Config';
 import { toaster } from '../../../../components/ui/toaster';
@@ -21,7 +21,9 @@ import { Route as AccountListRoute } from '@routes/daily/_sidebar/account/index'
 
 export const Route = createFileRoute('/daily/_sidebar/account/$account')({
     component: AccountComponent,
-    loader: ({ params: { account } }) => getAccount(account),
+    // 回访时命中缓存即刻返回（loader 不再阻塞导航），首访仍走真实请求；
+    // 页面内的 refreshAccountData 与写操作失效保证数据不会长期陈旧
+    loader: ({ params: { account } }) => peekAccount(account) ?? getAccount(account),
     errorComponent: () => <div> Not Found </div>,
 });
 
