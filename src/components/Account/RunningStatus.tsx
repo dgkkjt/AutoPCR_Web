@@ -5,7 +5,7 @@ import { getRunningStatus } from "@/api/Account";
 import { RunningStatusResponse } from "@/interfaces/Account";
 import { toaster } from "@/components/ui/toaster";
 
-export default function RunningStatus() {
+export default function RunningStatus({ compact = false }: { compact?: boolean }) {
     const [status, setStatus] = useState<RunningStatusResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
@@ -32,8 +32,8 @@ export default function RunningStatus() {
             positioning={{ placement: "bottom-end" }}
         >
             <Popover.Trigger asChild>
-                <Button size="xs" variant="surface" colorPalette="cyan">
-                    <FiActivity /> 运行状态
+                <Button size="xs" variant="surface" colorPalette="cyan" px={compact ? 2 : undefined} aria-label="运行状态">
+                    <FiActivity /> {compact ? "" : "运行状态"}
                 </Button>
             </Popover.Trigger>
             <Portal>

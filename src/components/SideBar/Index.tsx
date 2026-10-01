@@ -136,13 +136,13 @@ export default function Nav() {
     return (
         <Flex flexDirection={'column'} height={'100vh'} bg="bg.canvas">
             <Box top={0} left={0} right={0} zIndex={20} bg="transparent" px={4} py={0}>
-                <Flex h={14} alignItems={'center'} justifyContent={'space-between'}>
-                    <Box>
+                <Flex h={14} alignItems={'center'} justifyContent={'space-between'} gap={2} minW={0}>
+                    <Box flexShrink={0}>
                         <Link to={InfoRoute.to}>
-                            <Image src={autopcr} alt="autopcr" h="32px" w="auto" objectFit="contain" />
+                            <Image src={autopcr} alt="autopcr" h={isSmallScreen ? "26px" : "32px"} w="auto" objectFit="contain" maxW="40vw" />
                         </Link>
                     </Box>
-                    <HStack as={'nav'} gap={isSmallScreen ? 1 : 4}>
+                    <HStack as={'nav'} gap={isSmallScreen ? 1 : 4} minW={0}>
                         <NavItem key="dashboard" href={InfoRoute.to} icon={FiHome} >
                             一览
                         </NavItem>
@@ -153,8 +153,8 @@ export default function Nav() {
                             登出
                         </NavItem>
                     </HStack>
-                    <Flex alignItems={'center'} gap={2}>
-                        <RunningStatus />
+                    <Flex alignItems={'center'} gap={isSmallScreen ? 1 : 2} flexShrink={0}>
+                        <RunningStatus compact={isSmallScreen} />
                         <Button
                             aria-label="Toggle color mode"
                             onClick={toggleColorMode}

@@ -518,8 +518,9 @@ export function DashBoard() {
     }, [userInfo?.accounts]);
 
 
+    // minW=0：允许在窄屏下收缩到子元素 min-content 以下，防止工具栏把整页撑出视口（移动端布局错乱的根因）
     return (
-        <Stack gap={4} minH="full" w="full" p={4} position="relative" zIndex={1}>
+        <Stack gap={4} minH="full" w="full" minW={0} p={4} position="relative" zIndex={1}>
             <Card.Root variant="elevated" bg="bg.glass" backdropFilter="blur(12px)" shadow="sm" borderRadius="2xl" borderWidth="1px" borderColor="border.subtle">
                 <Card.Body py={2} px={4}>
                     <Flex justify="space-between" align="center" wrap="wrap" gap={2}>
@@ -533,7 +534,9 @@ export function DashBoard() {
                             )}
                         </Box>
 
-                        <HStack gap={2}>
+                        {/* flexShrink=0 不可压缩：空间不足时整组换到下一行，保证三个按钮始终在同一行；
+                            组内保留 wrap 仅作极窄屏（<320px）兜底，正常手机宽度一行放得下 */}
+                        <Flex wrap="wrap" gap={2} justify="flex-end" flexShrink={0}>
                             <Button size="xs" variant="surface" colorPalette="teal" onClick={showReadme}>
                                 <FiBook /> 使用须知
                             </Button>
@@ -543,7 +546,7 @@ export function DashBoard() {
                             <Button size="xs" variant="surface" colorPalette="red" onClick={deleteQQConfirm.onOpen}>
                                 <FiUserX /> 注销QQ
                             </Button>
-                        </HStack>
+                        </Flex>
                     </Flex>
                 </Card.Body>
             </Card.Root>
@@ -564,7 +567,8 @@ export function DashBoard() {
                 wrap="wrap"
                 gap={2}
             >
-                <HStack gap={2} alignItems="center">
+                {/* 移动端可换行：原 HStack 不换行，窄屏下最小内容宽约 440px 直接溢出视口 */}
+                <Flex gap={2} alignItems="center" wrap="wrap" minW={0}>
                     <Box w="80px" flexShrink={0} fontSize="xs" color="fg.muted" lineHeight="1.5" display="flex" alignItems="center">
                         <Text whiteSpace="nowrap">
                             {selectedAccounts.length > 0
@@ -611,7 +615,7 @@ export function DashBoard() {
                     >
                         <FiLayers /> 批量运行
                     </Button>
-                </HStack>
+                </Flex>
 
                 <Flex flex={1} minW={0} wrap="wrap" alignContent="flex-start" justify="flex-start" alignItems="center" gap={2}>
                     <Button
@@ -794,7 +798,7 @@ export function DashBoard() {
             </Alert>
 
             {isTableView ? (
-                <Box borderRadius="xl">
+                <Box borderRadius="xl" overflowX="auto">
                     <Table.Root variant="outline" colorPalette="blue" size="sm" bg="bg.panel" borderRadius="xl" boxShadow="sm" ml="0" mr="auto">
                         <Table.Header position="sticky" top={0} bg="bg.subtle" zIndex={1} boxShadow="sm">
                             <Table.Row>
@@ -881,7 +885,8 @@ export function DashBoard() {
                             全选账号
                         </Checkbox>
                     </Box>
-                    <SimpleGrid gap={4} templateColumns="repeat(auto-fill, minmax(280px, 1fr))">
+                    {/* min(280px,100%)：极窄屏（<312px 可用宽）下轨道不超过容器，避免卡片溢出 */}
+                    <SimpleGrid gap={4} templateColumns="repeat(auto-fill, minmax(min(280px, 100%), 1fr))">
                         {loadError && !userInfo ? (
                             <Card.Root bg="bg.panel" borderRadius="2xl" shadow="sm">
                                 <Card.Body py={8} textAlign="center">

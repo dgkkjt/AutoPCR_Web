@@ -689,7 +689,7 @@ export function AccountInfo({
                     borderRadius="lg"
                 >
                     <Flex justify="space-between" align="center" mb={1} gap={2}>
-                        <Text fontSize="xs" color="fg.muted">
+                        <Text fontSize="xs" color="fg.muted" flexShrink={0}>
                             上次运行
                         </Text>
                         <Text fontSize="xs" fontWeight="bold">
