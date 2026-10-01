@@ -11,12 +11,27 @@
 | 编号 | 问题 | 状态 | 验收结果 |
 |---|---|---|---|
 | P0-1 | API 路径参数未编码 → 路径穿越 | ✅ 已修 | `src/api/Account.ts` 14 处路径参数全部 `encodeURIComponent`；新增 `src/utils/accountName.ts` 并在 `handleCreateAccount` 校验。实测请求 URL 为 `/daily/api/account/%E8%B5%A4%E8%84%9A`；`../user/1`、`a/b`、`x?y`、`..` 均被拒，`正常账号` 正常提交 |
-| P0-2 | 明文密码写 localStorage | ✅ 已修（保留记住密码） | 新增 `src/utils/credentialStore.ts`：AES-GCM + **不可导出密钥**（存 IndexedDB），密文存 localStorage。实测：localStorage 无任何键含明文密码；重开登录页 QQ 与密码均正确回填；取消勾选后凭据被清除 |
+| P0-2 | 明文密码写 localStorage | ✅ 已修（保留记住密码） | 新增 `src/utils/credentialStore.ts`，按环境分三档：`encrypted`（安全上下文 → AES-GCM + 不可导出密钥）/ `obfuscated`（http:// → 随机密钥 XOR 混淆）/ `unavailable`（不存密码）。实测两档均无明文落盘、均能正确回填 |
 | P0-3 | 验证轮询计数器不递减 → 无限轮询 | ✅ 已修 | `Validate.tsx` 三分支均递减 `left_cnt`；新增 `stopQueryValidate()` 与定时器句柄；弹窗在途标记避免叠加 |
 
 > P0-2 的防护边界必须说清楚：加密能防住「直接读 localStorage」（扩展、共用电脑、离线取证），
 > **但防不住同源 XSS**——浏览器里不存在能对抗同源脚本的客户端加密。要彻底解决只能不存密码，
 > 改用浏览器自带密码管理器（已同时加上 `autoComplete="current-password"`）。
+
+### P0-2 补记：`crypto.subtle` 只在安全上下文可用
+
+修复后用户报告 HTTP 局域网部署（`http://192.168.2.x:7080`）弹「当前浏览器不支持加密存储」。
+根因不是浏览器不支持，而是 **`crypto.subtle` 仅在安全上下文（HTTPS / localhost）可用**，
+HTTP 下它是 `undefined`，原实现按 fail-closed 拒绝写入，且提示文案误导。
+
+已改为分档降级（见上表），并把提示改为如实说明原因。**建议部署侧启用 HTTPS**（自签亦可），
+代码会自动从 `obfuscated` 升到 `encrypted`，无需改动。
+
+| 档位 | 条件 | 实测结果 |
+|---|---|---|
+| `encrypted` | `isSecureContext === true` | `http://127.0.0.1` → 档位 `aes-gcm`，无警告提示 |
+| `obfuscated` | HTTP 且 IndexedDB 可用 | `http://192.168.2.58` → 档位 `xor`，无明文落盘，回填正确 |
+| `unavailable` | IndexedDB 不可用 | 只存 QQ，提示「下次需手动输入密码」 |
 
 ---
 
