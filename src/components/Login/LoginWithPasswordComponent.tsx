@@ -25,7 +25,7 @@ import { postRegister } from '@api/Register'
 import { toaster } from '../../components/ui/toaster'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { clearCredential, loadCredential, saveCredential } from '@/utils/credentialStore'
+import { clearCredential, isSecureContext, loadCredential, saveCredential } from '@/utils/credentialStore'
 import { safeGetItem, safeRemoveItem, safeSetItem } from '@components/Account/accountShared'
 
 interface Inputs {
@@ -71,12 +71,23 @@ export default function LoginWithPasswordComponent() {
         }
         safeSetItem('qq', values.qq);
         const saved = await saveCredential(values.qq, values.password);
-        if (!saved) {
+        if (!saved.ok) {
             clearCredential();
             toaster.create({
                 type: 'warning',
                 title: '密码未能保存',
-                description: '当前浏览器不支持加密存储，下次需手动输入密码',
+                description: '当前浏览器不提供本地存储，下次需手动输入密码',
+            });
+            return;
+        }
+        if (saved.mode === 'obfuscated' && !isSecureContext()) {
+            // 说清楚原因：不是浏览器不支持，而是 http:// 不是安全上下文，
+            // crypto.subtle 不可用 → 只能降级为混淆。给 HTTPS 这条明路。
+            toaster.create({
+                type: 'warning',
+                title: '已保存，但仅做了混淆处理',
+                description: '当前是 HTTP 访问，浏览器禁用加密能力。给站点启用 HTTPS 后会自动升级为真加密',
+                duration: 6000,
             });
         }
     }
