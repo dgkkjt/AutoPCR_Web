@@ -1,5 +1,5 @@
 import { Flex, Text } from '@chakra-ui/react'
-import { Link, useRouterState } from '@tanstack/react-router'
+import { useNavigate, useRouterState } from '@tanstack/react-router'
 import type { IconType } from 'react-icons'
 import { FiHome, FiUser } from 'react-icons/fi'
 
@@ -26,9 +26,13 @@ const TABS: TabDef[] = [
  * - 首页：执行 + 账号列表（账号详情是它的下钻二级页，不再单独立 Tab）
  * - 我的：安全设置 / 用户管理（仅管理员）/ 主题 / 登出
  *
+ * 跳转走 navigate() 而不是 Link：这里不需要预加载/右键新窗口等 <a> 语义，
+ * 用按钮点击可以避免锚点默认行为与父级 Flex 布局互相干扰。
+ *
  * 桌面端不渲染本组件（沿用顶部导航）。
  */
 export function BottomTabBar() {
+    const navigate = useNavigate()
     const pathname = useRouterState({ select: (s) => s.location.pathname })
 
     return (
@@ -47,30 +51,36 @@ export function BottomTabBar() {
                 // 下钻页（如 /daily/account/xxx）仍高亮所属一级 Tab
                 const isActive = pathname === tab.to || pathname.startsWith(`${tab.to}/`)
                 return (
-                    <Link
+                    <Flex
+                        as="button"
                         key={tab.key}
-                        to={tab.to}
-                        style={{ flex: 1, textDecoration: 'none' }}
+                        flex={1}
+                        direction="column"
+                        align="center"
+                        justify="center"
+                        gap={1}
+                        minH={`${TABBAR_H}px`}
+                        bg="transparent"
+                        border={0}
+                        color={isActive ? 'blue.solid' : 'fg.muted'}
+                        cursor="pointer"
+                        aria-label={tab.label}
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={() => {
+                            if (isActive) return;
+                            void navigate({ to: tab.to });
+                        }}
+                        _active={{ bg: 'bg.subtle' }}
                     >
-                        <Flex
-                            direction="column"
-                            align="center"
-                            justify="center"
-                            gap={1}
-                            minH={`${TABBAR_H}px`}
-                            color={isActive ? 'blue.solid' : 'fg.muted'}
-                            _active={{ bg: 'bg.subtle' }}
+                        <tab.icon size={22} />
+                        <Text
+                            fontSize="11px"
+                            lineHeight="1"
+                            fontWeight={isActive ? 'semibold' : 'medium'}
                         >
-                            <tab.icon size={22} />
-                            <Text
-                                fontSize="11px"
-                                lineHeight="1"
-                                fontWeight={isActive ? 'semibold' : 'medium'}
-                            >
-                                {tab.label}
-                            </Text>
-                        </Flex>
-                    </Link>
+                            {tab.label}
+                        </Text>
+                    </Flex>
                 )
             })}
         </Flex>

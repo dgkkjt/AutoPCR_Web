@@ -12,6 +12,9 @@ import {
 import {
     FiCompass,
     FiHome,
+    FiLogOut,
+    FiMoreHorizontal,
+    FiUser,
     FiUsers,
 } from 'react-icons/fi'
 import { Link, Outlet, useNavigate } from '@tanstack/react-router'
@@ -31,8 +34,10 @@ import {useEffect} from 'react'
 import {useUserRole} from "@api/Account.ts";
 import RunningStatus from '../Account/RunningStatus';
 import { ScheduleNotifyWatcher } from '../Account/ScheduleNotify';
+import { Route as MeRoute } from '@routes/daily/_sidebar/me/index';
 import { AppBar } from '@components/mobile/AppBar'
 import BottomTabBar from '@components/mobile/BottomTabBar'
+import { showActionSheet } from '@components/mobile/ActionSheet'
 import { useIsMobile } from '@components/mobile/useIsMobile'
 
 interface NavItemProps extends FlexProps {
@@ -171,11 +176,50 @@ export default function Nav() {
                             >
                                 {colorMode === 'light' ? <LuSun /> : <LuMoon />}
                             </Button>
+                            {/* 登出放在顶栏溢出菜单：它是全局动作，不该埋在二级页里 */}
+                            <Button
+                                aria-label="更多操作"
+                                size="sm"
+                                minW="44px"
+                                minH="44px"
+                                px={0}
+                                variant="ghost"
+                                colorPalette="gray"
+                                onClick={() => void (async () => {
+                                    const key = await showActionSheet({
+                                        title: '更多',
+                                        items: [
+                                            { key: 'me', label: '我的', icon: <FiUser /> },
+                                            ...(role?.admin
+                                                ? [{ key: 'users', label: '用户管理', icon: <FiUsers /> }]
+                                                : []),
+                                            { key: 'logout', label: '登出', icon: <FiLogOut />, danger: true },
+                                        ],
+                                    });
+                                    if (!key) return;
+                                    if (key === 'me') void navigate({ to: MeRoute.to });
+                                    else if (key === 'users') void navigate({ to: UsersRoute.to });
+                                    else if (key === 'logout') void handleLogout();
+                                })()}
+                            >
+                                <FiMoreHorizontal />
+                            </Button>
                         </>
                     }
                 />
 
-                <Box flex={1} overflowY="auto" overflowX="hidden" p={3} zIndex={1}>
+                {/* minH=0 + minW=0：不加这两个，flex 子项的 min-height:auto 会让内容区撑开、
+                    把底部 Tab 栏顶到视口之外，同时顶栏也跟着整页滚走 */}
+                <Box
+                    flex={1}
+                    minH={0}
+                    minW={0}
+                    overflowY="auto"
+                    overflowX="hidden"
+                    p={3}
+                    zIndex={1}
+                    css={{ WebkitOverflowScrolling: 'touch' }}
+                >
                     <ScheduleNotifyWatcher />
                     <Outlet />
                 </Box>
