@@ -273,7 +273,8 @@ export default function Module({ alias, areaKey, areaName, config, info, isOpen,
             _hover={{ shadow: 'md', borderColor: "blue.400" }}
             {...rest}
         >
-            <Card.Header py={3} cursor="pointer" onClick={handleHeaderClick}>
+            {/* 手机形态：模块头部抬到 56px，折叠箭头本身就在这块热区里 */}
+            <Card.Header py={3} minH={{ base: '56px', md: undefined }} cursor="pointer" onClick={handleHeaderClick}>
                 <Flex align="center" wrap="wrap" gap={2}>
                     <Box onClick={(e) => e.stopPropagation()} mr={{ base: 1, md: 1 }}>
                         <Checkbox
@@ -309,13 +310,13 @@ export default function Module({ alias, areaKey, areaName, config, info, isOpen,
                     </Box>
                     <HStack gap={{ base: 1, md: 2 }} flexShrink={0}>
                         {info?.runnable &&
-                            <Button size={{ base: 'xs', md: 'sm' }} variant="surface" colorPalette='blue' loading={isOpen} onClick={handleExecuteWrapper}>执行</Button>
+                            <Button size="sm" minH={{ base: '44px', md: undefined }} variant="surface" colorPalette='blue' loading={isOpen} onClick={handleExecuteWrapper}>执行</Button>
                         }
                         {info?.runnable &&
-                            <Button size={{ base: 'xs', md: 'sm' }} variant="ghost" colorPalette='blue' loading={isOpen} onClick={handleResult}>结果</Button>
+                            <Button size="sm" minH={{ base: '44px', md: undefined }} variant="ghost" colorPalette='blue' loading={isOpen} onClick={handleResult}>结果</Button>
                         }
                         {areaKey === 'daily' && (
-                            <Button size={{ base: 'xs', md: 'sm' }} variant="ghost" colorPalette='teal' loading={isOpen} onClick={handleSyncConfig} aria-label="同步配置"><FiCopy /></Button>
+                            <Button size="sm" minH={{ base: '44px', md: undefined }} variant="ghost" colorPalette='teal' loading={isOpen} onClick={handleSyncConfig} aria-label="同步配置"><FiCopy /></Button>
                         )}
                         <Box color="fg.muted" transition="transform 0.2s" transform={isExpanded ? "rotate(180deg)" : "rotate(0deg)"}>
                             <FiChevronDown />

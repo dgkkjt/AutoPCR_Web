@@ -2,6 +2,8 @@ import { Box, Button, Flex, IconButton, Popover, Stack, Text, useDisclosure } fr
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { FiCompass } from 'react-icons/fi';
+import { useIsMobile } from '@components/mobile/useIsMobile';
+import { showActionSheet } from '@components/mobile/ActionSheet';
 import Module from './Module';
 import { ConfigValue, ModuleResponse } from '@interfaces/Module';
 import { Skeleton } from '../../components/ui/skeleton';
@@ -81,6 +83,24 @@ export default function Area({ alias, keys: key, areaName, showOnlyFav = false }
 
     const { open, onOpen, onClose } = useDisclosure();
     const [tocOpen, setTocOpen] = useState(false);
+    const isMobile = useIsMobile();
+
+    /**
+     * 目录跳转（手机形态）
+     *
+     * 桌面是右侧 fixed 悬浮 Popover——小屏上会压住正文、定位也容易出界。
+     * 手机上改走底部操作面板，选完再 scrollIntoView。
+     */
+    const openMobileToc = async () => {
+        if (tocList.length === 0) return;
+        const key = await showActionSheet({
+            title: '跳转到模块',
+            subtitle: `共 ${tocList.length} 个模块`,
+            items: tocList.map((item) => ({ key: item.id, label: item.name })),
+        });
+        if (!key) return;
+        document.querySelector(`#${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -206,6 +226,25 @@ export default function Area({ alias, keys: key, areaName, showOnlyFav = false }
                 </Stack>
             </Box>
 
+            {/* 手机形态：目录改右下悬浮按钮 + 底部面板，避免遮挡正文 */}
+            {isMobile ? (
+                <IconButton
+                    aria-label="目录"
+                    colorPalette="blue"
+                    position="fixed"
+                    right="4"
+                    bottom="24"
+                    size="lg"
+                    minW="52px"
+                    minH="52px"
+                    rounded="full"
+                    shadow="xl"
+                    zIndex={100}
+                    onClick={() => void openMobileToc()}
+                >
+                    <FiCompass />
+                </IconButton>
+            ) : (
             <Flex
                 position="fixed"
                 right={{ base: '3', md: '6' }}
@@ -234,6 +273,7 @@ export default function Area({ alias, keys: key, areaName, showOnlyFav = false }
                     </Popover.Content>
                 </Popover.Root>
             </Flex>
+            )}
         </>
     );
 }

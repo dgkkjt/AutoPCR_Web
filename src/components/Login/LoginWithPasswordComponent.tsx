@@ -74,6 +74,8 @@ export default function LoginWithPasswordComponent() {
                             {...register('qq')}
                             placeholder='5位以上'
                             defaultValue={localStorage.getItem('qq') as (string | undefined)}
+                            size="lg"
+                            minH={{ base: '52px', md: undefined }}
                         />
                     </Field>
                     <Field invalid={!!errors.password} label="密码" errorText={errors.password?.message}>
@@ -81,6 +83,8 @@ export default function LoginWithPasswordComponent() {
                             {...register('password')}
                             placeholder='8位以上,非QQ密码'
                             defaultValue={localStorage.getItem('password') as (string | undefined)}
+                            size="lg"
+                            minH={{ base: '52px', md: undefined }}
                         />
                     </Field>
                     <Stack gap={10}>
@@ -92,7 +96,10 @@ export default function LoginWithPasswordComponent() {
                             <Text 
                                 color="fg.muted" 
                                 fontSize="sm" 
-                                cursor="pointer" 
+                                cursor="pointer"
+                                display="flex"
+                                alignItems="center"
+                                minH={{ base: '44px', md: undefined }}
                                 _hover={{ color: "fg.emphasized", textDecoration: "underline" }}
                                 onClick={() => setIsForgotOpen(true)}
                             >
@@ -102,6 +109,7 @@ export default function LoginWithPasswordComponent() {
                         <Button
                             colorPalette="brand"
                             loading={isSubmitting} type='submit'
+                            minH={{ base: '52px', md: undefined }}
                         >
                             登录
                         </Button>
@@ -109,6 +117,7 @@ export default function LoginWithPasswordComponent() {
                             colorPalette="brand"
                             loading={isSubmitting}
                             onClick={handleSubmit(handleRegister)}
+                            minH={{ base: '52px', md: undefined }}
                         >
                             注册
                         </Button>

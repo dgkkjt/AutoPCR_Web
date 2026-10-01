@@ -52,13 +52,14 @@ export function LoginComponent() {
 
     return (
         <Flex
-            h="100vh"
             align="center"
             justify="center"
             bg="bg.canvas"
             position="relative"
             overflow="hidden"
             p={{ base: 0, md: 4 }}
+            // 100dvh：iOS Safari 地址栏收放时 100vh 会错位（带回退）
+            css={{ height: ['100vh', '100dvh'] }}
         >
             {/* Ambient Background Blobs */}
             <Box
@@ -86,8 +87,15 @@ export function LoginComponent() {
                 animation={`${pulse} 20s infinite ease-in-out reverse`}
             />
 
-            {/* Theme Toggle */}
-            <Box position="absolute" top={4} right={4} zIndex={10}>
+            {/* Theme Toggle：避开刘海与右侧安全区 */}
+            <Box
+                position="absolute"
+                zIndex={10}
+                css={{
+                    top: 'calc(16px + var(--safe-top, 0px))',
+                    right: 'calc(16px + var(--safe-right, 0px))',
+                }}
+            >
                 <ClientOnly fallback={<Skeleton w="10" h="10" />}>
                     <IconButton
                         variant="ghost"

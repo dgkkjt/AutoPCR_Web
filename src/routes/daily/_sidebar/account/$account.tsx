@@ -1,6 +1,7 @@
-import { Box, Button, HStack, Tabs, Tag } from '@chakra-ui/react';
+import { Box, Button, Card, Flex, HStack, Stack, Tabs, Tag, Text } from '@chakra-ui/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FiActivity, FiCheck, FiStar, FiTarget, FiUserX } from 'react-icons/fi';
+import { FiActivity, FiCheck, FiChevronLeft, FiStar, FiTarget, FiUserX } from 'react-icons/fi';
+import { useNavigate } from '@tanstack/react-router';
 import NiceModal from '@ebay/nice-modal-react';
 
 import { AccountResponse } from '@interfaces/Account';
@@ -13,7 +14,9 @@ import { POPUP_FLAG_KEY, loadPopupFlag, emitDailyFinished, textFitPadding, safeS
 import { getErrorDescription } from '@components/Account/Config';
 import { toaster } from '../../../../components/ui/toaster';
 import { Checkbox } from '../../../../components/ui/checkbox';
+import { IconButton as TouchIconButton } from '@components/ui/icon-button';
 import ResultInfoModal from '@components/Account/ResultInfoModal';
+import { useIsMobile } from '@components/mobile/useIsMobile';
 
 export const Route = createFileRoute('/daily/_sidebar/account/$account')({
     component: AccountComponent,
@@ -192,6 +195,139 @@ function AccountComponent() {
             patchBusy(a, false);
         }
     };
+
+    const isMobile = useIsMobile();
+    const navigate = useNavigate();
+
+    // 手机形态：Tab 只做导航，操作下移为独立操作行（桌面上两者混在一行只能横向滚动）
+    if (isMobile) {
+        const tabDefs = [
+            { value: '0', label: '账号信息' },
+            ...(accountInfo?.area ?? []).map((area, index) => ({
+                value: String(index + 1),
+                label: area?.name ?? String(index + 1),
+            })),
+        ];
+
+        return (
+            <Stack gap={3} w="full" minW={0} pb={8}>
+                {/* 上下文条：返回 + 账号 + 状态 */}
+                <Flex
+                    align="center"
+                    gap={1}
+                    bg="bg.panel"
+                    borderRadius="2xl"
+                    shadow="sm"
+                    px={2}
+                    py={1}
+                >
+                    <TouchIconButton
+                        aria-label="返回"
+                        variant="ghost"
+                        colorPalette="gray"
+                        onClick={() => void navigate({ to: '/daily/account' as any })}
+                    >
+                        <FiChevronLeft />
+                    </TouchIconButton>
+                    <Box flex={1} minW={0}>
+                        <Text fontSize="16px" fontWeight="semibold" truncate>{displayName}</Text>
+                        <Text fontSize="xs" color="fg.muted" truncate>{account}</Text>
+                    </Box>
+                    {statusMeta && (
+                        <Tag.Root size="sm" colorPalette={statusMeta.color} variant="subtle" flexShrink={0} mr={1}>
+                            <Tag.StartElement>{statusMeta.icon}</Tag.StartElement>
+                            <Tag.Label>{statusMeta.label}</Tag.Label>
+                        </Tag.Root>
+                    )}
+                </Flex>
+
+                {/* 区服切换：只承担导航，可横向滑动 */}
+                <Box overflowX="auto" css={{ scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
+                    <HStack gap={2} w="max-content" py={1}>
+                        {tabDefs.map((t) => (
+                            <Button
+                                key={t.value}
+                                size="sm"
+                                minH="40px"
+                                borderRadius="full"
+                                px={4}
+                                colorPalette={activeTab === t.value ? 'blue' : 'gray'}
+                                variant={activeTab === t.value ? 'solid' : 'outline'}
+                                onClick={() => setActiveTab(t.value)}
+                            >
+                                {t.label}
+                            </Button>
+                        ))}
+                    </HStack>
+                </Box>
+
+                {/* 操作行：与 Tab 分离 */}
+                {activeTab !== '0' && (
+                    <Card.Root bg="bg.panel" borderRadius="2xl" shadow="sm">
+                        <Card.Body py={3} px={4} display="flex" flexDirection="column" gap={3}>
+                            <Flex align="center" justify="space-between" gap={2}>
+                                <Button
+                                    size="sm"
+                                    minH="44px"
+                                    colorPalette={isCurrentTabFavOnly ? 'yellow' : 'gray'}
+                                    variant={isCurrentTabFavOnly ? 'solid' : 'ghost'}
+                                    borderWidth="1px"
+                                    borderColor="currentColor"
+                                    onClick={handleToggleCurrentFavOnly}
+                                >
+                                    <FiStar fill={isCurrentTabFavOnly ? 'currentColor' : 'none'} />
+                                    {isCurrentTabFavOnly ? '显示全部' : '只看收藏'}
+                                </Button>
+                                <Checkbox
+                                    checked={popupOn}
+                                    onCheckedChange={(details) => {
+                                        const next = !!details.checked;
+                                        setPopupOn(next);
+                                        if (!safeSetItem(POPUP_FLAG_KEY(account), next ? 'true' : 'false')) {
+                                            toaster.create({ type: 'warning', title: '弹结果设置保存失败', description: '本地存储不可用，本次修改不会保留' });
+                                        }
+                                    }}
+                                    colorPalette="blue"
+                                    size="md"
+                                    title="开启后，本账号清理完日常自动弹出结果窗"
+                                >
+                                    弹结果
+                                </Checkbox>
+                            </Flex>
+                            <Button
+                                w="full"
+                                minH="48px"
+                                colorPalette="orange"
+                                onClick={() => void handleCleanDaily()}
+                                loading={cleanLoading}
+                            >
+                                <FiTarget /> 清理全部日常
+                            </Button>
+                        </Card.Body>
+                    </Card.Root>
+                )}
+
+                {/* 内容区 */}
+                {activeTab === '0' ? (
+                    <Stack gap={3}>
+                        <Info accountInfo={accountInfo} onSaveSuccess={refreshAccountData} />
+                        <ConfigImportExport
+                            alias={accountInfo?.alias}
+                            areas={accountInfo?.area}
+                            onImportSuccess={handleImportSuccess}
+                        />
+                    </Stack>
+                ) : (
+                    <Area
+                        alias={accountInfo?.alias}
+                        keys={currentArea?.key ?? ''}
+                        areaName={currentArea?.name ?? ''}
+                        showOnlyFav={!!(currentArea && favOnlyMap[currentArea.key])}
+                    />
+                )}
+            </Stack>
+        );
+    }
 
     return (
         <Tabs.Root

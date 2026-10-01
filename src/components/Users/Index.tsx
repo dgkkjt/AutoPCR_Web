@@ -60,17 +60,24 @@ export default function Users() {
         <Stack height={'100%'} p={4} gap={6}>
             <Card.Root variant="elevated" bg="bg.panel" shadow="sm" borderRadius="2xl">
                 <Card.Body py={3} px={4}>
-                    <Flex justify="space-between" align="center">
+                    {/* 手机形态：标题与按钮各占一行，避免 358px 可用宽下两个按钮被压扁 */}
+                    <Flex
+                        direction={{ base: 'column', md: 'row' }}
+                        justify="space-between"
+                        align={{ base: 'stretch', md: 'center' }}
+                        gap={3}
+                    >
                         <Text fontSize="lg" fontWeight="bold">用户管理</Text>
                         <HStack gap={3}>
-                           <Button size="sm" variant="surface" colorPalette="blue" onClick={createUser}><FiPlus /> 创建用户</Button>
-                           <Button size="sm" variant="surface" colorPalette="orange" onClick={setClanForbid}><FiShield /> 会战禁用</Button>
+                           <Button flex={1} size="sm" minH={{ base: '44px', md: undefined }} variant="surface" colorPalette="blue" onClick={createUser}><FiPlus /> 创建用户</Button>
+                           <Button flex={1} size="sm" minH={{ base: '44px', md: undefined }} variant="surface" colorPalette="orange" onClick={setClanForbid}><FiShield /> 会战禁用</Button>
                         </HStack>
                     </Flex>
                 </Card.Body>
             </Card.Root>
 
-            <SimpleGrid gap={4} templateColumns='repeat(auto-fill, minmax(280px, 1fr))'>
+            {/* min(280px,100%)：极窄屏下轨道不超过容器，避免卡片溢出 */}
+            <SimpleGrid gap={4} templateColumns='repeat(auto-fill, minmax(min(280px, 100%), 1fr))'>
                 {
                     users?.map((user) => {
                         // 仅超管可更改管理员用户
@@ -230,7 +237,8 @@ function UserInfoItem({ qq, userDisabled, clan, admin, accountCount, allowManage
                     w="full" 
                     variant="surface" 
                     colorPalette="pink" 
-                    size="sm" 
+                    size="sm"
+                    minH={{ base: '44px', md: undefined }}
                     onClick={startRstPwd} 
                     disabled={!allowEdit}
                 >
