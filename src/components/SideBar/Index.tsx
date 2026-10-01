@@ -39,6 +39,7 @@ import { AppBar } from '@components/mobile/AppBar'
 import BottomTabBar from '@components/mobile/BottomTabBar'
 import { showActionSheet } from '@components/mobile/ActionSheet'
 import { useIsMobile } from '@components/mobile/useIsMobile'
+import { deferToIdle } from '@/utils/deferToIdle'
 
 interface NavItemProps extends FlexProps {
     icon?: IconType
@@ -114,22 +115,29 @@ export default function Nav() {
 
     const navigate = useNavigate();
 
+    // 首屏之后再建立这条 SSE：它是长连接，首屏期间会占掉一个同源并发连接名额，
+    // 与入口 JS / 首屏接口争带宽。验证通知早 1~2 秒建立并不影响功能。
     useEffect(() => {
-        const eventSource = new EventSource('/daily/api/query_validate');
+        let eventSource: EventSource | null = null;
 
-        eventSource.onmessage = function(event) {
-            const res: ValidateResponse = JSON.parse(event.data as string) as ValidateResponse;
-            if (res.status !== 'ok') {
-                window.open(res.url, '_blank');
-            }
-        };
+        const cancelDefer = deferToIdle(() => {
+            eventSource = new EventSource('/daily/api/query_validate');
 
-        eventSource.onerror = function() {
-            // console.error('Error receiving SSE', err);
-        };
+            eventSource.onmessage = function(event) {
+                const res: ValidateResponse = JSON.parse(event.data as string) as ValidateResponse;
+                if (res.status !== 'ok') {
+                    window.open(res.url, '_blank');
+                }
+            };
+
+            eventSource.onerror = function() {
+                // console.error('Error receiving SSE', err);
+            };
+        }, 2500, 1200);
 
         return () => {
-            eventSource.close();
+            cancelDefer();
+            eventSource?.close();
         };
     }, []);
 

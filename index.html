@@ -12,6 +12,26 @@
         --safe-bottom: env(safe-area-inset-bottom, 0px);
         --safe-left: env(safe-area-inset-left, 0px);
         --safe-right: env(safe-area-inset-right, 0px);
+
+        /* 启动骨架配色：与 theme.ts 的 bg.canvas / bg.panel 对齐
+           （此阶段 JS 还没跑，引用不到 Chakra 变量，只能硬编码同一组色值） */
+        --boot-canvas: #F1F5F9;
+        --boot-panel: #FFFFFF;
+        --boot-line: #E6EBF2;
+        --boot-muted: #94A3B8;
+        --boot-brand: #1A6CE6;
+        --boot-border: #E2E8F0;
+      }
+      @media (min-width: 768px) {
+        :root { --boot-canvas: #E2E8F0; }
+      }
+      .boot-dark {
+        --boot-canvas: #0B0E14;
+        --boot-panel: #151B2B;
+        --boot-line: #232B3D;
+        --boot-muted: #6B7A90;
+        --boot-brand: #388BF2;
+        --boot-border: #232B3D;
       }
 
       /* 恒定保留文档级滚动条槽位：弹层（日程通知面板等）开合时页面宽度不再抖动。
@@ -42,10 +62,228 @@
           font-size: 16px;
         }
       }
+
+      /* ==================== 启动骨架 ====================
+         纯 HTML/CSS，在入口 JS 解析执行之前就能绘制，覆盖 App 起来之前的白屏。
+         React 首次提交后由 main.tsx 淡出移除，之后页面内的卡片骨架接手。
+         样式对齐现有视觉（同样的底色/白面板/圆角/品牌色），不引入新视觉语言。 */
+      #boot-skeleton {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        background: var(--boot-canvas);
+        color: var(--boot-muted);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+        opacity: 1;
+        transition: opacity .18s ease-out;
+      }
+      .boot-track {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 2px;
+        background: var(--boot-line);
+        overflow: hidden;
+      }
+      .boot-bar {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--boot-brand);
+        transition: width .25s ease-out;
+      }
+      .boot-topbar {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 52px;
+        padding: calc(8px + var(--safe-top)) 12px 8px;
+        background: var(--boot-panel);
+        border-bottom: 1px solid var(--boot-border);
+      }
+      .boot-mark {
+        width: 26px; height: 26px;
+        border-radius: 8px;
+        background: var(--boot-brand);
+        flex: 0 0 auto;
+      }
+      .boot-word {
+        height: 14px;
+        width: 96px;
+        border-radius: 5px;
+        background: var(--boot-line);
+      }
+      .boot-body {
+        flex: 1 1 auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow: hidden;
+      }
+      @media (min-width: 768px) {
+        .boot-body { padding: 16px; gap: 16px; }
+      }
+      .boot-card {
+        background: var(--boot-panel);
+        border-radius: 16px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .boot-l {
+        height: 12px;
+        border-radius: 6px;
+        background: var(--boot-line);
+      }
+      .boot-w30 { width: 30%; } .boot-w45 { width: 45%; }
+      .boot-w60 { width: 60%; } .boot-w85 { width: 85%; }
+      .boot-btn { height: 44px; border-radius: 12px; background: var(--boot-line); }
+      .boot-shimmer .boot-l,
+      .boot-shimmer .boot-btn,
+      .boot-shimmer .boot-word {
+        background-image: linear-gradient(90deg, var(--boot-line) 0%, var(--boot-border) 50%, var(--boot-line) 100%);
+        background-size: 200% 100%;
+        animation: boot-shimmer 1.4s linear infinite;
+      }
+      @keyframes boot-shimmer {
+        from { background-position: 200% 0; }
+        to { background-position: -200% 0; }
+      }
+      /* 尊重系统「减弱动态效果」：只留静态骨架，不做扫光 */
+      @media (prefers-reduced-motion: reduce) {
+        .boot-shimmer .boot-l,
+        .boot-shimmer .boot-btn,
+        .boot-shimmer .boot-word { animation: none; background-image: none; }
+        #boot-skeleton, .boot-bar { transition: none; }
+      }
+      .boot-status {
+        flex: 0 0 auto;
+        padding: 12px 16px calc(16px + var(--safe-bottom));
+        text-align: center;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--boot-muted);
+      }
+      .boot-status b {
+        font-weight: 600;
+        color: var(--boot-brand);
+        font-variant-numeric: tabular-nums;
+      }
     </style>
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- 启动骨架：在入口 JS 之前绘制，React 首次提交后淡出 -->
+    <div id="boot-skeleton" class="boot-shimmer" role="status" aria-live="polite">
+      <div class="boot-track"><i class="boot-bar" id="boot-bar"></i></div>
+      <div class="boot-topbar">
+        <div class="boot-mark"></div>
+        <div class="boot-word"></div>
+      </div>
+      <div class="boot-body" aria-hidden="true">
+        <div class="boot-card">
+          <div class="boot-l boot-w45"></div>
+          <div class="boot-l boot-w30"></div>
+        </div>
+        <div class="boot-card">
+          <div class="boot-l boot-w45"></div>
+          <div class="boot-btn"></div>
+          <div class="boot-btn"></div>
+        </div>
+        <div class="boot-card">
+          <div class="boot-l boot-w60"></div>
+          <div class="boot-l boot-w85"></div>
+          <div class="boot-l boot-w60"></div>
+        </div>
+      </div>
+      <div class="boot-status"><span id="boot-text">正在加载资源…</span> <b id="boot-pct"></b></div>
+    </div>
+
     <script type="module" src="/src/main.tsx"></script>
+    <!-- 构建期由 vite.config.ts 的 bootChunkManifest 插件填入入口首屏所需的 chunk 清单；
+         dev 下保持为空，下面的脚本会自动回退到「读 HTML 已声明资源」 -->
+    <script id="boot-manifest"></script>
+    <script>
+      /* 启动进度：不猜、不打表。
+         分母 = 入口首屏真正需要的资源数（构建期注入的 chunk 清单），这是确定的事实；
+         分子 = 这些资源真正加载完成的个数。
+         因此进度只增不减、不会提前到 100%——真正的「完成」是应用可交互，由 main.tsx 移除骨架。 */
+      (function () {
+        var skeleton = document.getElementById('boot-skeleton');
+        var bar = document.getElementById('boot-bar');
+        var text = document.getElementById('boot-text');
+        var pct = document.getElementById('boot-pct');
+        if (!skeleton) return;
+
+        /* 跟随已保存的主题，避免深色用户看到一屏白 */
+        try {
+          var t = localStorage.getItem('theme');
+          var dark = t === 'dark' || ((!t || t === 'system') &&
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) { skeleton.classList.add('boot-dark'); document.documentElement.classList.add('dark'); }
+        } catch (e) { /* 隐私模式：忽略 */ }
+
+        var targets = window.__BOOT_CHUNKS__;
+        if (!targets || !targets.length) {
+          /* 没有清单（dev / 构建异常）：退回读 HTML 里已声明的初始资源 */
+          targets = [];
+          var links = document.querySelectorAll('link[rel="modulepreload"]');
+          for (var i = 0; i < links.length; i++) targets.push(links[i].href);
+          var scripts = document.querySelectorAll('script[src]');
+          for (var j = 0; j < scripts.length; j++) targets.push(scripts[j].src);
+        }
+        var total = targets.length || 1;
+
+        var loaded = {};
+        function render() {
+          var n = 0;
+          for (var k in loaded) if (loaded[k]) n++;
+          /* 封顶 99%：剩下的 1% 留给「初始化界面」这段无法量化的工作 */
+          var v = Math.min(99, Math.round((n / total) * 100));
+          bar.style.width = v + '%';
+          pct.textContent = v + '%';
+        }
+        /* PerformanceEntry.name 是完整 URL，清单里是路径：统一取 pathname 再比，
+           否则两边永远匹配不上，进度会一直停在 0%。 */
+        function toPath(name) {
+          try { return new URL(name, location.href).pathname; } catch (e) { return name; }
+        }
+        function mark(rawName) {
+          var path = toPath(rawName);
+          if (loaded[path] || targets.indexOf(path) < 0) return;
+          loaded[path] = 1;
+          render();
+        }
+
+        try {
+          var seen = performance.getEntriesByType('resource');
+          for (var m = 0; m < seen.length; m++) mark(seen[m].name);
+          new PerformanceObserver(function (list) {
+            var es = list.getEntries();
+            for (var x = 0; x < es.length; x++) mark(es[x].name);
+          }).observe({ type: 'resource', buffered: true });
+        } catch (e) { /* 老浏览器：只靠 DOMContentLoaded 推进文案 */ }
+
+        render();
+
+        document.addEventListener('DOMContentLoaded', function () {
+          text.textContent = '正在初始化界面…';
+        });
+
+        /* 兜底：入口脚本长时间没跑起来时别让用户干等 */
+        window.setTimeout(function () {
+          if (document.getElementById('boot-skeleton') &&
+              !document.getElementById('root').childElementCount) {
+            text.textContent = '仍在加载，请检查网络…';
+          }
+        }, 12000);
+      })();
+    </script>
   </body>
 </html>

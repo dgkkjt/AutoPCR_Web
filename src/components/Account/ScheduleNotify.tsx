@@ -11,6 +11,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FiBell } from 'react-icons/fi';
 import { API } from '@api/APIUtils';
 import { safeGetItem, safeSetItem } from './accountShared';
+import { deferToIdle } from '@/utils/deferToIdle';
 import { Checkbox } from '../../components/ui/checkbox';
 
 /** 后端 schedule_entries 单条（与半月刊渲染同源） */
@@ -253,11 +254,14 @@ export function ScheduleNotifyWatcher(): null {
                 scheduleFetching = false;
             }
         };
-        void tick();
+        // 首屏之后再跑首次巡检：这条 /schedule 请求不参与首屏渲染，
+        // 放在关键路径上只会和入口 JS、账号列表抢带宽
+        const cancelDefer = deferToIdle(() => void tick(), 3000, 1500);
         // 低频巡检：每 10 分钟看一眼是否到了提醒时刻/是否跨天；拉取受上面的节流约束，实际网络请求每天至多一次
         const timer = window.setInterval(() => void tick(), 10 * 60 * 1000);
         return () => {
             cancelled = true;
+            cancelDefer();
             window.clearInterval(timer);
         };
     }, []);

@@ -1,5 +1,7 @@
 import { Button } from '@chakra-ui/react'
-import { utils, writeFile, Range } from 'xlsx'
+// 只取类型：xlsx 运行时实现改为点击时才动态 import（见 handleExport）。
+// 静态 import 会让 285KB 的 xlsx 进入入口的 modulepreload 列表，首屏白下载。
+import type { Range } from 'xlsx'
 import type { DataItem, HeaderItem, iTableResult } from '@interfaces/ModuleResult'
 
 export default function ExcelExport({ header, data }: iTableResult) {
@@ -10,8 +12,6 @@ export default function ExcelExport({ header, data }: iTableResult) {
             return Math.max(max, 1 + getDepth(children))
         }, 0)
 
-    const maxDepth = getDepth(header)
-
     const countLeaves = (defs: HeaderItem[]): number =>
         defs.reduce((sum, h) => {
             return sum + (typeof h === 'string'
@@ -19,67 +19,71 @@ export default function ExcelExport({ header, data }: iTableResult) {
                 : countLeaves(h[Object.keys(h)[0]]))
         }, 0)
 
-    const headerMatrix: string[][] = Array.from({ length: maxDepth }, () => [])
-    const merges: Range[] = []
+    const handleExport = async () => {
+        // 表头矩阵/合并单元格/数据体原先在每次 render 都重算一遍，实际只在导出时用得上，
+        // 一并挪进这里：既省渲染开销，也让 xlsx 的加载时机与「点击导出」严格对齐。
+        const maxDepth = getDepth(header)
 
-    function build(defs: HeaderItem[], level = 0, colIndex = 0) {
-        defs.forEach(h => {
-            if (typeof h === 'string') {
-                headerMatrix[level].push(h)
-                for (let i = level + 1; i < maxDepth; i++) {
-                    headerMatrix[i].push('')
+        const headerMatrix: string[][] = Array.from({ length: maxDepth }, () => [])
+        const merges: Range[] = []
+
+        function build(defs: HeaderItem[], level = 0, colIndex = 0) {
+            defs.forEach(h => {
+                if (typeof h === 'string') {
+                    headerMatrix[level].push(h)
+                    for (let i = level + 1; i < maxDepth; i++) {
+                        headerMatrix[i].push('')
+                        merges.push({
+                            s: { r: level, c: colIndex },
+                            e: { r: maxDepth - 1, c: colIndex }
+                        })
+                    }
+                    colIndex += 1
+                } else {
+                    const key = Object.keys(h)[0]
+                    const children = h[key]
+                    const span = countLeaves(children)
+                    headerMatrix[level].push(key)
+                    for (let i = 1; i < span; i++) headerMatrix[level].push('')
                     merges.push({
                         s: { r: level, c: colIndex },
-                        e: { r: maxDepth - 1, c: colIndex }
+                        e: { r: level, c: colIndex + span - 1 }
                     })
+                    build(children, level + 1, colIndex)
+                    colIndex += span
                 }
-                colIndex += 1
-            } else {
-                const key = Object.keys(h)[0]
-                const children = h[key]
-                const span = countLeaves(children)
-                headerMatrix[level].push(key)
-                for (let i = 1; i < span; i++) headerMatrix[level].push('')
-                merges.push({
-                    s: { r: level, c: colIndex },
-                    e: { r: level, c: colIndex + span - 1 }
-                })
-                build(children, level + 1, colIndex)
-                colIndex += span
-            }
-        })
-    }
-    build(header)
+            })
+        }
+        build(header)
 
-    const dataCells = (
-        defs: HeaderItem[],
-        row: DataItem
-    ): (string | number)[] => {
-        return defs.flatMap(def => {
-            if (typeof def === 'string') {
-                return (row as Record<string, DataItem>)[def] as (string | number);
-            } else {
-                const key = Object.keys(def)[0]
-                const children = def[key]
-                const groupVal = (row as Record<string, DataItem>)[key]
-                if (
-                    groupVal !== undefined &&
-                    typeof groupVal !== 'object'
-                ) {
-                    return groupVal;
+        const dataCells = (
+            defs: HeaderItem[],
+            row: DataItem
+        ): (string | number)[] => {
+            return defs.flatMap(def => {
+                if (typeof def === 'string') {
+                    return (row as Record<string, DataItem>)[def] as (string | number);
+                } else {
+                    const key = Object.keys(def)[0]
+                    const children = def[key]
+                    const groupVal = (row as Record<string, DataItem>)[key]
+                    if (
+                        groupVal !== undefined &&
+                        typeof groupVal !== 'object'
+                    ) {
+                        return groupVal;
+                    }
+                    return dataCells(children, groupVal || {});
                 }
-                return dataCells(children, groupVal || {});
-            }
-        })
-    };
+            })
+        };
 
-    const body = data.map(row => dataCells(header, row))
+        const body = data.map(row => dataCells(header, row))
+        const aoa = [...headerMatrix, ...body]
 
-    const aoa = [...headerMatrix, ...body]
+        const timestamp = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/[/\s:]/g, '-');
 
-    const timestamp = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/[/\s:]/g, '-');
-
-    const handleExport = () => {
+        const { utils, writeFile } = await import('xlsx')
         const ws = utils.aoa_to_sheet(aoa)
         ws['!merges'] = merges
         const wb = utils.book_new()
@@ -93,4 +97,3 @@ export default function ExcelExport({ header, data }: iTableResult) {
         </Button>
     )
 }
-

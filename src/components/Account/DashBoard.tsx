@@ -45,6 +45,7 @@ import { dailyCleanRegistry as handle, getDisplayName, loadBatch, saveBatch, loa
 import { useIsMobile } from '@components/mobile/useIsMobile';
 import { showConfirmSheet } from '@components/mobile/ConfirmSheet';
 import { showActionSheet } from '@components/mobile/ActionSheet';
+import { deferToIdle } from '@/utils/deferToIdle';
 
 /** 收集其他账号已占用的显示名（含未自定义时的原始 alias） */
 function collectOccupiedNames(accounts: AccountInfoInterface[] | undefined, selfAlias: string): Set<string> {
@@ -105,7 +106,9 @@ export function DashBoard() {
         const refAlias = userInfo?.accounts?.find((acc) => acc.name !== BATCH_RUNNER)?.name;
         if (!refAlias) return;
         quickActionsReconciled.current = true;
-        (async () => {
+        // 首屏之后再对账：这里会打出 1 + 区服数 个请求（getAccount + 每区 config），
+        // 全都不参与首屏渲染，放在关键路径上只是白抢连接与主线程
+        const cancelDefer = deferToIdle(() => void (async () => {
             try {
                 const detail = await getAccount(refAlias);
                 const areas = detail?.area || [];
@@ -140,7 +143,9 @@ export function DashBoard() {
                 // 失败时复位，让下次挂载重试）
                 quickActionsReconciled.current = false;
             }
-        })();
+        })(), 3500, 1800);
+
+        return cancelDefer;
     }, [userInfo?.accounts]);
     useEffect(() => {
         // 首次挂载不回写：原值刚 load 出来，写了也是白写（隐私模式还会白弹"保存失败"）
