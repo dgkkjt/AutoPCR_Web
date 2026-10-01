@@ -31,6 +31,9 @@ import {useEffect} from 'react'
 import {useUserRole} from "@api/Account.ts";
 import RunningStatus from '../Account/RunningStatus';
 import { ScheduleNotifyWatcher } from '../Account/ScheduleNotify';
+import { AppBar } from '@components/mobile/AppBar'
+import BottomTabBar from '@components/mobile/BottomTabBar'
+import { useIsMobile } from '@components/mobile/useIsMobile'
 
 interface NavItemProps extends FlexProps {
     icon?: IconType
@@ -71,14 +74,14 @@ const NavItem = ({ icon, children, href, onClick, ...rest }: NavItemProps) => {
 
     if (href) {
         return (
-            <Link 
-                to={href} 
-                activeProps={{ 
-                    style: { 
+            <Link
+                to={href}
+                activeProps={{
+                    style: {
                         fontWeight: "bold",
                         backgroundColor: "var(--chakra-colors-sidebar-active-bg)",
                         color: "var(--chakra-colors-sidebar-active-fg)",
-                    } 
+                    }
                 }}
                 style={{ textDecoration: 'none' }}
             >
@@ -101,6 +104,8 @@ export default function Nav() {
     const { colorMode, toggleColorMode } = useColorMode()
     const role = useUserRole();
     const isSmallScreen = useBreakpointValue({ base: true, md: false });
+    // 手机形态走独立框架：顶栏 + 内容 + 底部 Tab；桌面完全沿用原有顶栏版式
+    const isMobile = useIsMobile();
 
     const navigate = useNavigate();
 
@@ -133,8 +138,55 @@ export default function Nav() {
         }
     }
 
+    // 100dvh：iOS Safari 地址栏收放时 100vh 会错位；不支持 dvh 的旧浏览器回落 100vh
+    const shellHeight = { height: ['100vh', '100dvh'] } as const;
+
+    if (isMobile) {
+        return (
+            <Flex
+                flexDirection={'column'}
+                bg="bg.canvas"
+                css={shellHeight}
+            >
+                <AppBar
+                    left={
+                        <Box flexShrink={0} pl={1}>
+                            <Link to={InfoRoute.to}>
+                                <Image src={autopcr} alt="autopcr" h="26px" w="auto" objectFit="contain" maxW="40vw" />
+                            </Link>
+                        </Box>
+                    }
+                    right={
+                        <>
+                            <RunningStatus compact />
+                            <Button
+                                aria-label="Toggle color mode"
+                                onClick={toggleColorMode}
+                                size="sm"
+                                minW="44px"
+                                minH="44px"
+                                px={0}
+                                variant="ghost"
+                                colorPalette="brand"
+                            >
+                                {colorMode === 'light' ? <LuSun /> : <LuMoon />}
+                            </Button>
+                        </>
+                    }
+                />
+
+                <Box flex={1} overflowY="auto" overflowX="hidden" p={3} zIndex={1}>
+                    <ScheduleNotifyWatcher />
+                    <Outlet />
+                </Box>
+
+                <BottomTabBar />
+            </Flex>
+        )
+    }
+
     return (
-        <Flex flexDirection={'column'} height={'100vh'} bg="bg.canvas">
+        <Flex flexDirection={'column'} bg="bg.canvas" css={shellHeight}>
             <Box top={0} left={0} right={0} zIndex={20} bg="transparent" px={4} py={0}>
                 <Flex h={14} alignItems={'center'} justifyContent={'space-between'} gap={2} minW={0}>
                     <Box flexShrink={0}>

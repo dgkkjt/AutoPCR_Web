@@ -5,6 +5,19 @@ import { createSystem, defaultConfig, defineConfig } from "@chakra-ui/react"
 const config = defineConfig({
   theme: {
     tokens: {
+      sizes: {
+        // 触控基线：所有可点区域的最小边（Apple HIG / Material 均为 44/48，取 44）
+        touchMin: { value: "44px" },
+        // 框架尺寸（不含安全区，安全区由各组件叠 env()）
+        appbar: { value: "52px" },
+        tabbar: { value: "56px" },
+        // 移动端表单控件高度
+        controlLg: { value: "52px" },
+      },
+      radii: {
+        cardMd: { value: "16px" },
+        ctlMd: { value: "12px" },
+      },
       colors: {
         // Soft Tech Blue / Modern UI Blue (Less aggressive, more professional)
         brand: {
@@ -40,8 +53,8 @@ const config = defineConfig({
         bg: {
           // Panel backgrounds (Sidebar, Cards, Navbar)
           panel: { value: { base: "#FFFFFF", _dark: "#151B2B" } }, 
-          // Page background
-          canvas: { value: { base: "#E2E8F0", _dark: "#0B0E14" } },
+          // Page background：手机端大面积中灰会显浑浊，调浅一档；桌面（md+）保持原值不变
+          canvas: { value: { base: "#F1F5F9", md: "#E2E8F0", _dark: "#0B0E14" } },
           // Muted backgrounds (Secondary areas)
           muted: { value: { base: "#EDF2F7", _dark: "#1A202C" } },
           // Glass effect for headers/overlays

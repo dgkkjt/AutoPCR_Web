@@ -2,13 +2,35 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover：配合 env(safe-area-inset-*) 处理刘海与 Home Indicator -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>AutoPCR</title>
     <style>
-      /* 恒定保留文档级滚动条槽位：弹层（日程通知面板等）开合时页面宽度不再抖动 */
-      html {
-        scrollbar-gutter: stable;
-        overflow-y: scroll;
+      :root {
+        /* 安全区：组件内统一用 var(--safe-*) 引用，未支持时回落 0px */
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-left: env(safe-area-inset-left, 0px);
+        --safe-right: env(safe-area-inset-right, 0px);
+      }
+
+      /* 恒定保留文档级滚动条槽位：弹层（日程通知面板等）开合时页面宽度不再抖动。
+         仅桌面生效——移动端这条规则会撑出一个幽灵滚动槽，且 100vh 与地址栏收放打架 */
+      @media (min-width: 768px) {
+        html {
+          scrollbar-gutter: stable;
+          overflow-y: scroll;
+        }
+      }
+
+      /* 移动端：禁掉整页橡皮筋，滚动交给内部容器 */
+      @media (max-width: 767.98px) {
+        html, body {
+          overscroll-behavior-y: none;
+        }
+        body {
+          -webkit-text-size-adjust: 100%;
+        }
       }
     </style>
   </head>
