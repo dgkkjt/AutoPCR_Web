@@ -141,18 +141,18 @@ export async function postAccountSyncConfig(alias: string) {
 }
 
 export async function getAccount(alias: string) {
-  const response = await API.get<AccountResponse>(`/account/${alias}`);
+  const response = await API.get<AccountResponse>(`/account/${encodeURIComponent(alias)}`);
   return response.data;
 }
 
 export async function delAccount(alias: string) {
-  const response = await API.delete<DefaultResponse>(`/account/${alias}`);
+  const response = await API.delete<DefaultResponse>(`/account/${encodeURIComponent(alias)}`);
   clearCachedAccountConfigs(alias);
   return response.data;
 }
 
 export async function putAccount(alias: string, account: string, password: string, channel: string, batch_accounts: (string | number)[]) {
-  const response = await API.put<DefaultResponse>(`/account/${alias}`, {
+  const response = await API.put<DefaultResponse>(`/account/${encodeURIComponent(alias)}`, {
     username: account,
     password: password,
     channel: channel,
@@ -173,7 +173,7 @@ export async function getAccountConfig(alias: string, area: string) {
   if (pendingRequest) return pendingRequest;
 
   const requestVersion = accountConfigCacheVersion;
-  const request = API.get<ModuleResponse>(`/account/${alias}/${area}`)
+  const request = API.get<ModuleResponse>(`/account/${encodeURIComponent(alias)}/${encodeURIComponent(area)}`)
     .then((response) => {
       if (requestVersion === accountConfigCacheVersion) {
         cacheAccountConfig(key, response.data);
@@ -195,20 +195,20 @@ export async function putAccountConfig(alias: string, key: string, value: Config
 }
 
 export async function putAccountConfigs(alias: string, configs: Record<string, ConfigValue>) {
-  const response = await API.put<DefaultResponse>(`/account/${alias}/config`, configs);
+  const response = await API.put<DefaultResponse>(`/account/${encodeURIComponent(alias)}/config`, configs);
   updateCachedAccountConfigs(alias, configs);
   return response.data;
 }
 
 export async function postAccountAreaDaily(alias: string) {
-  const response = await API.post<AccountInfo>(`/account/${alias}/do_daily`, {}, {
+  const response = await API.post<AccountInfo>(`/account/${encodeURIComponent(alias)}/do_daily`, {}, {
     timeout: 10 * 60 * 1000,
   });
   return response.data;
 }
 
 export async function postAccountAreaSingle(alias: string, module: string) {
-  const response = await API.post<ResultInfo[]>(`/account/${alias}/do_single`, {
+  const response = await API.post<ResultInfo[]>(`/account/${encodeURIComponent(alias)}/do_single`, {
     order: module
   }, {
     timeout: 10 * 60 * 1000,
@@ -217,12 +217,12 @@ export async function postAccountAreaSingle(alias: string, module: string) {
 }
 
 export async function getAccountDailyResultList(alias: string) {
-  const response = await API.get<ResultInfo[]>(`/account/${alias}/daily_result`);
+  const response = await API.get<ResultInfo[]>(`/account/${encodeURIComponent(alias)}/daily_result`);
   return response.data
 }
 
 export async function getAccountDailyResult(alias: string, id: number) {
-  const response = await API.get<Blob>(`/account/${alias}/daily_result/${id}`,
+  const response = await API.get<Blob>(`/account/${encodeURIComponent(alias)}/daily_result/${encodeURIComponent(id)}`,
     {
 		responseType: "blob",
 		timeout: 1 * 60 * 1000
@@ -232,12 +232,12 @@ export async function getAccountDailyResult(alias: string, id: number) {
 }
 
 export async function getAccountAreaSingleResultList(alias: string, module: string) {
-  const response = await API.get<ResultInfo[]>(`/account/${alias}/single_result/${module}`);
+  const response = await API.get<ResultInfo[]>(`/account/${encodeURIComponent(alias)}/single_result/${encodeURIComponent(module)}`);
   return response.data
 }
 
 export async function getAccountAreaSingleResult(alias: string, module: string, text: boolean) {
-  const response = await API.get<Blob | ModuleResult>(`/account/${alias}/single_result/${module}?text=${text}`,
+  const response = await API.get<Blob | ModuleResult>(`/account/${encodeURIComponent(alias)}/single_result/${encodeURIComponent(module)}?text=${encodeURIComponent(text)}`,
     {
 		responseType: "blob",
 		timeout: 1 * 60 * 1000
@@ -256,17 +256,17 @@ export async function getAllUsers() {
 }
 
 export async function postUser(account: string, userInfo: UserInfo) {
-  const response = await API.post<DefaultResponse>(`/user/${account}`, userInfo);
+  const response = await API.post<DefaultResponse>(`/user/${encodeURIComponent(account)}`, userInfo);
   return response.data;
 }
 
 export async function putUser(account: string, userInfo: UserInfo) {
-  const response = await API.put<DefaultResponse>(`/user/${account}`, userInfo);
+  const response = await API.put<DefaultResponse>(`/user/${encodeURIComponent(account)}`, userInfo);
   return response.data;
 }
 
 export async function deleteUser(account: string) {
-  const response = await API.delete<DefaultResponse>(`/user/${account}`);
+  const response = await API.delete<DefaultResponse>(`/user/${encodeURIComponent(account)}`);
   return response.data;
 }
 

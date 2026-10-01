@@ -46,6 +46,7 @@ import { useIsMobile } from '@components/mobile/useIsMobile';
 import { showConfirmSheet } from '@components/mobile/ConfirmSheet';
 import { showActionSheet } from '@components/mobile/ActionSheet';
 import { deferToIdle } from '@/utils/deferToIdle';
+import { checkAccountName } from '@/utils/accountName';
 
 /** 收集其他账号已占用的显示名（含未自定义时的原始 alias） */
 function collectOccupiedNames(accounts: AccountInfoInterface[] | undefined, selfAlias: string): Set<string> {
@@ -445,13 +446,14 @@ export function DashBoard() {
             return;
         }
         const trimmed = alias.trim();
-        if (!trimmed) {
+        // 昵称会进 API 路径，名字不合规会让请求打到别的路由——新建时拦在源头
+        const invalidReason = checkAccountName(trimmed);
+        if (invalidReason) {
             toaster.create({
                 type: 'warning',
-                title: '需输入名字，此次未创建',
+                title: '名字不可用，此次未创建',
+                description: invalidReason,
             });
-            creatAccountSwitch.onClose();
-            setAlias('');
             return;
         }
 

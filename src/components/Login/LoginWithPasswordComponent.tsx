@@ -15,6 +15,7 @@ import {
     ModalOverlay,
 } from '../../components/ui/modal'
 import { SubmitHandler, useForm } from 'react-hook-form'
+import { useEffect } from 'react'
 
 import { Checkbox } from '../../components/ui/checkbox'
 import { Field } from '../../components/ui/field'
@@ -24,6 +25,8 @@ import { postRegister } from '@api/Register'
 import { toaster } from '../../components/ui/toaster'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
+import { clearCredential, loadCredential, saveCredential } from '@/utils/credentialStore'
+import { safeGetItem, safeRemoveItem, safeSetItem } from '@components/Account/accountShared'
 
 interface Inputs {
     qq: string
@@ -35,32 +38,59 @@ export default function LoginWithPasswordComponent() {
     const {
         handleSubmit,
         register,
+        setValue,
         formState: { isSubmitting, errors },
-    } = useForm<Inputs>()
-    const [remember, setRemember] = useState<boolean>(localStorage.getItem('remember') === 'true' ? true : false);
+    } = useForm<Inputs>({ defaultValues: { qq: '', password: '' } })
+    const [remember, setRemember] = useState<boolean>(() => safeGetItem('remember') === 'true');
     const [isForgotOpen, setIsForgotOpen] = useState(false);
 
-    const handleRember = (values: Inputs) => {
-        localStorage.setItem('remember', remember ? 'true' : 'false');
-        if (remember) {
-            localStorage.setItem('qq', values.qq);
-            localStorage.setItem('password', values.password);
-        } else {
-            localStorage.removeItem('qq')
-            localStorage.removeItem('password');
+    // 勾选过「记住我」时把加密保存的凭据解密回填。异步进行，回填前输入框保持为空。
+    useEffect(() => {
+        if (!remember) return;
+        let cancelled = false;
+        void loadCredential().then((saved) => {
+            if (cancelled || !saved) return;
+            setValue('qq', saved.qq);
+            setValue('password', saved.password);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [remember, setValue]);
+
+    /**
+     * 记住登录信息：QQ 明存（不是秘密），密码经 AES-GCM 加密后存储。
+     * 加密不可用时拒绝写明文，只保留 QQ —— 宁可少一个便利，也不留明文密码。
+     */
+    const handleRember = async (values: Inputs) => {
+        safeSetItem('remember', remember ? 'true' : 'false');
+        if (!remember) {
+            safeRemoveItem('qq');
+            clearCredential();
+            return;
+        }
+        safeSetItem('qq', values.qq);
+        const saved = await saveCredential(values.qq, values.password);
+        if (!saved) {
+            clearCredential();
+            toaster.create({
+                type: 'warning',
+                title: '密码未能保存',
+                description: '当前浏览器不支持加密存储，下次需手动输入密码',
+            });
         }
     }
 
     const handleLogin: SubmitHandler<Inputs> = async (values) => {
         const res = await postLoginWithPassword(values.qq, values.password);
-        handleRember(values);
+        await handleRember(values);
         toaster.create({ title: "登录成功", type: "success", description: res });
         await navigate({ to: InfoRoute.to });
     }
 
     const handleRegister: SubmitHandler<Inputs> = async (values) => {
         const res = await postRegister(values.qq, values.password);
-        handleRember(values);
+        await handleRember(values);
         toaster.create({ title: "注册成功", type: "success", description: res });
         await navigate({ to: InfoRoute.to });
     }
@@ -73,7 +103,7 @@ export default function LoginWithPasswordComponent() {
                         <Input type="text"
                             {...register('qq')}
                             placeholder='5位以上'
-                            defaultValue={localStorage.getItem('qq') as (string | undefined)}
+                            autoComplete="username"
                             size="lg"
                             minH={{ base: '52px', md: undefined }}
                         />
@@ -82,7 +112,7 @@ export default function LoginWithPasswordComponent() {
                         <Input type="password"
                             {...register('password')}
                             placeholder='8位以上,非QQ密码'
-                            defaultValue={localStorage.getItem('password') as (string | undefined)}
+                            autoComplete="current-password"
                             size="lg"
                             minH={{ base: '52px', md: undefined }}
                         />
@@ -92,7 +122,13 @@ export default function LoginWithPasswordComponent() {
                             direction={{ base: 'column', sm: 'row' }}
                             align={'start'}
                             justify={'space-between'}>
-                            <Checkbox checked={remember} onCheckedChange={(e) => setRemember(!!e.checked)}>记住我</Checkbox>
+                            <Checkbox
+                                checked={remember}
+                                onCheckedChange={(e) => setRemember(!!e.checked)}
+                                title="记住后会加密保存在本机；共用设备不建议勾选"
+                            >
+                                记住我
+                            </Checkbox>
                             <Text 
                                 color="fg.muted" 
                                 fontSize="sm" 

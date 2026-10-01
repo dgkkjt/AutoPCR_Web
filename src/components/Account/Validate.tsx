@@ -21,19 +21,42 @@ interface GeetestResponse {
     geetest_seccode: string;
 }
 
+/** 轮询定时器句柄：组件卸载 / 主动停止时清掉，避免卸载后继续发请求与弹窗 */
+let validateTimer: number | undefined = undefined;
+/** 弹窗在途标记：弹窗期间轮询仍会继续，但不重复弹（否则每秒叠一层） */
+let validateModalShowing = false;
+
+/** 停止轮询（供调用方在卸载时调用） */
+export function stopQueryValidate(): void {
+    if (validateTimer !== undefined) {
+        clearTimeout(validateTimer);
+        validateTimer = undefined;
+    }
+}
+
 export function QueryValidate(alias: string, left_cnt = 120) {
     if (left_cnt < 0) {
+        stopQueryValidate();
         toaster.create({ type: 'error', title: '验证查询超时' });
         return;
     }
     getAccountValidate().then(async (res) => {
         if (res.status === 'empty') {
-            setTimeout(QueryValidate, 1000, alias, left_cnt - 1);
+            validateTimer = window.setTimeout(QueryValidate, 1000, alias, left_cnt - 1);
         } else if (res.status == "ok") {
-            // do nothing
+            // do nothing（已无待验证项：不再排下一次）
+            stopQueryValidate();
         } else {
-            setTimeout(QueryValidate, 1000, alias);
-            await NiceModal.show(ValidateModal, { alias: alias, id: res.id, userid: res.userid, gt: res.gt, challenge: res.challenge });
+            // 关键：这里也必须递减 left_cnt。原实现漏传该参数，值回落默认 120，
+            // 于是只要后端持续返回非 ok/empty 状态，计数器永不归零 → 无限轮询
+            validateTimer = window.setTimeout(QueryValidate, 1000, alias, left_cnt - 1);
+            if (validateModalShowing) return;
+            validateModalShowing = true;
+            try {
+                await NiceModal.show(ValidateModal, { alias: alias, id: res.id, userid: res.userid, gt: res.gt, challenge: res.challenge });
+            } finally {
+                validateModalShowing = false;
+            }
         }
     }).catch((err: AxiosError) => {
         toaster.create({ type: 'error', title: '验证查询失败', description: err?.response?.data as string || "网络错误" });
