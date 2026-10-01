@@ -17,9 +17,14 @@ export const toaster = createToaster({
 export const Toaster = () => {
   return (
     <Portal>
-      <ChakraToaster toaster={toaster} insetInline={{ md: "4" }}>
+      {/* 手机形态：toast 左右留白并避开状态栏，宽度撑满可用区（原样贴边且会被刘海压住） */}
+      <ChakraToaster
+        toaster={toaster}
+        insetInline={{ base: "3", md: "4" }}
+        css={{ paddingTop: 'var(--safe-top, 0px)' }}
+      >
         {(toast) => (
-          <Toast.Root width={{ md: "sm" }} flexDirection="row" onClick={() => toaster.dismiss(toast.id)} cursor="pointer">
+          <Toast.Root width={{ base: "100%", md: "sm" }} flexDirection="row" onClick={() => toaster.dismiss(toast.id)} cursor="pointer">
             {toast.type === "loading" ? (
               <Spinner size="sm" color="blue.solid" />
             ) : (

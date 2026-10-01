@@ -324,8 +324,8 @@ export function ScheduleNotifySettings() {
                     borderWidth="1px"
                     borderColor="currentColor"
                     borderRadius="md"
-                    px={2}
-                    h="2rem"
+                    px={{ base: 3, md: 2 }}
+                    h={{ base: '44px', md: '2rem' }}
                     display="flex"
                     alignItems="center"
                     gap={1}

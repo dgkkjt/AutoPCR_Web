@@ -17,6 +17,7 @@ import { Checkbox } from '../../../../components/ui/checkbox';
 import { IconButton as TouchIconButton } from '@components/ui/icon-button';
 import ResultInfoModal from '@components/Account/ResultInfoModal';
 import { useIsMobile } from '@components/mobile/useIsMobile';
+import { Route as AccountListRoute } from '@routes/daily/_sidebar/account/index';
 
 export const Route = createFileRoute('/daily/_sidebar/account/$account')({
     component: AccountComponent,
@@ -225,7 +226,7 @@ function AccountComponent() {
                         aria-label="返回"
                         variant="ghost"
                         colorPalette="gray"
-                        onClick={() => void navigate({ to: '/daily/account' as any })}
+                        onClick={() => void navigate({ to: AccountListRoute.to })}
                     >
                         <FiChevronLeft />
                     </TouchIconButton>
