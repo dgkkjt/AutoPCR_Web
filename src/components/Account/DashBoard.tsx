@@ -11,7 +11,7 @@ import {
     Table,
     Text,
 } from '@chakra-ui/react';
-import { FiBook, FiCheck, FiGrid, FiKey, FiLayers, FiList, FiPlus, FiStar, FiTarget, FiUpload, FiUserMinus, FiUserPlus, FiUserX } from 'react-icons/fi';
+import { FiBook, FiCheck, FiGrid, FiKey, FiLayers, FiList, FiMoreHorizontal, FiPlus, FiStar, FiTarget, FiUpload, FiUserMinus, FiUserPlus, FiUserX } from 'react-icons/fi';
 import React, { ChangeEvent, useMemo, useRef } from 'react';
 import { Skeleton, SkeletonText } from '../../components/ui/skeleton';
 import { clearAccounts, delAccount, deleteAccount, getAccount, getAccountConfig, getUserInfo, postAccount, postAccountAreaSingle, postAccountImport, putUserInfo } from '@api/Account';
@@ -42,6 +42,9 @@ import { ScheduleNotifySettings } from './ScheduleNotify';
 import { getErrorDescription } from './Config';
 
 import { dailyCleanRegistry as handle, getDisplayName, loadBatch, saveBatch, loadPopupFlag, loadPopupMaster, textFitPadding, safeGetItem, safeSetItem, POPUP_MASTER_KEY, VIEW_MODE_KEY, busyAccountsRef, patchBusy, BATCH_RUNNER, DANGEROUS_AREA_NAME } from './accountShared';
+import { useIsMobile } from '@components/mobile/useIsMobile';
+import { showConfirmSheet } from '@components/mobile/ConfirmSheet';
+import { showActionSheet } from '@components/mobile/ActionSheet';
 
 /** 收集其他账号已占用的显示名（含未自定义时的原始 alias） */
 function collectOccupiedNames(accounts: AccountInfoInterface[] | undefined, selfAlias: string): Set<string> {
@@ -517,6 +520,328 @@ export function DashBoard() {
         return (selfAlias: string) => collectOccupiedNames(userInfo?.accounts, selfAlias);
     }, [userInfo?.accounts]);
 
+    const isMobile = useIsMobile();
+
+    /**
+     * 删除账号（手机与桌面共用）
+     *
+     * 原先走 window.confirm：原生弹窗在手机上样式割裂、文案不可控，
+     * 这里换成站内确认面板，并把"正在执行中的账号"提示带出来。
+     */
+    const handleDeleteSelected = async () => {
+        if (selectedAccounts.length === 0) {
+            clearAccountConfirm.onOpen(); // 未勾选 = 删除全部，走原有的独立确认弹窗
+            return;
+        }
+        const busyDel = selectedAccounts.filter((name) => busyAccountsRef.has(name));
+        const busyNote = busyDel.length > 0
+            ? `\n其中正在执行中的账号：${busyDel.join('、')}\n（删除后这些操作的结果将丢失）`
+            : '';
+        const ok = await showConfirmSheet({
+            title: '删除账号',
+            body: `确定删除选中的 ${selectedAccounts.length} 个账号吗？${busyNote}`,
+            confirmText: '删除',
+        });
+        if (!ok) return;
+        try {
+            await Promise.all(selectedAccounts.map((name) => delAccount(name)));
+            toaster.create({ type: 'success', title: '删除成功' });
+            setSelectedAccounts([]);
+            freshAccountInfo.onToggle();
+        } catch (err) {
+            toaster.create({ type: 'error', title: '删除失败', description: await getErrorDescription(err) });
+        }
+    };
+
+    // 手机形态：三段工具栏合并为「问候条 + 执行面板」，账号列表单列、主操作 44px
+    if (isMobile) {
+        const scopeLabel = selectedAccounts.length > 0
+            ? `只执行勾选账号 (${selectedAccounts.length})`
+            : batchAccounts.length > 0
+                ? `只执行默认账号 (${batchAccounts.length})`
+                : '执行全部账号';
+
+        return (
+            <Stack gap={3} w="full" minW={0} pb={6}>
+                {/* 问候条 + 更多（使用须知 / 修改密码 / 导入 / 注销 QQ） */}
+                <Card.Root bg="bg.panel" borderRadius="2xl" shadow="sm">
+                    <Card.Body py={3} px={4}>
+                        <Flex align="center" justify="space-between" gap={2}>
+                            <Box minW={0}>
+                                {!userInfo ? (
+                                    <Skeleton height="20px" width="120px" />
+                                ) : (
+                                    <>
+                                        <Text fontSize="xs" color="fg.muted">欢迎回来</Text>
+                                        <Text fontSize="md" fontWeight="bold" truncate>
+                                            {`${userInfo.qq} · ${selectableAccounts.length} 个账号`}
+                                        </Text>
+                                    </>
+                                )}
+                            </Box>
+                            <IconButton
+                                aria-label="更多操作"
+                                variant="ghost"
+                                size="md"
+                                onClick={() => void (async () => {
+                                    const key = await showActionSheet({
+                                        title: userInfo?.qq ? `QQ ${userInfo.qq}` : '账号',
+                                        items: [
+                                            { key: 'readme', label: '使用须知', icon: <FiBook /> },
+                                            { key: 'passwd', label: '修改密码', icon: <FiKey /> },
+                                            { key: 'import', label: '导入账号 (TSV)', icon: <FiUpload />, disabled: !userInfo?.clan },
+                                            { key: 'deleteQQ', label: '注销 QQ', icon: <FiUserX />, danger: true },
+                                        ],
+                                    });
+                                    if (key === 'readme') showReadme();
+                                    else if (key === 'passwd') handleResetPassword();
+                                    else if (key === 'import') fileInputRef.current?.click();
+                                    else if (key === 'deleteQQ') deleteQQConfirm.onOpen();
+                                })()}
+                            >
+                                <FiMoreHorizontal />
+                            </IconButton>
+                        </Flex>
+                    </Card.Body>
+                </Card.Root>
+
+                {/* 执行面板 */}
+                <Card.Root bg="bg.panel" borderRadius="2xl" shadow="sm">
+                    <Card.Body py={3} px={4} display="flex" flexDirection="column" gap={3}>
+                        <Flex align="center" gap={2} minW={0}>
+                            <Text fontSize="xs" color="fg.muted" flexShrink={0}>执行范围</Text>
+                            <Text fontSize="sm" fontWeight="semibold" color="purple.fg" truncate>
+                                {scopeLabel}
+                            </Text>
+                        </Flex>
+
+                        <HStack gap={2}>
+                            <Button
+                                flex={1}
+                                minH="44px"
+                                size="sm"
+                                colorPalette="purple"
+                                variant={selectedInBatch ? 'solid' : 'ghost'}
+                                borderWidth="1px"
+                                borderColor="currentColor"
+                                onClick={handleToggleBatchForSelected}
+                            >
+                                <FiStar fill={selectedInBatch ? 'currentColor' : 'none'} /> {selectedInBatch ? '取消默认' : '默认账号'}
+                            </Button>
+                            <Button
+                                flex={1}
+                                minH="44px"
+                                size="sm"
+                                colorPalette="blue"
+                                variant="ghost"
+                                borderWidth="1px"
+                                borderColor="currentColor"
+                                title="配置后端定时批量任务（BATCH_RUNNER）运行哪些账号"
+                                onClick={() => {
+                                    void navigate({ to: `${DashBoardRoute.to || ''}${encodeURIComponent(BATCH_RUNNER)}` as any });
+                                }}
+                            >
+                                <FiLayers /> 批量运行
+                            </Button>
+                        </HStack>
+
+                        <Button
+                            w="full"
+                            minH="48px"
+                            colorPalette="orange"
+                            onClick={handleCleanDailyAll}
+                            loading={busyAccounts.size > 0}
+                        >
+                            <FiTarget /> 清理全部日常
+                        </Button>
+
+                        <Box>
+                            <Text fontSize="xs" color="fg.muted" mb={2}>快捷功能</Text>
+                            <Flex wrap="wrap" gap={2}>
+                                <Button
+                                    size="sm"
+                                    minH="44px"
+                                    colorPalette="blue"
+                                    variant="outline"
+                                    title="添加或移除自定义功能按钮"
+                                    onClick={handleOpenQuickPicker}
+                                >
+                                    修改功能 <FiPlus />
+                                </Button>
+                                {quickActions.map((btn) => (
+                                    <Button
+                                        key={btn.key}
+                                        size="sm"
+                                        minH="44px"
+                                        colorPalette={btn.dangerous ? 'red' : 'blue'}
+                                        variant={btn.dangerous ? 'solid' : 'outline'}
+                                        title={btn.dangerous ? '危险功能，执行前会确认' : `执行 ${btn.name}`}
+                                        onClick={() => handleQuickAction(btn)}
+                                    >
+                                        {btn.name}
+                                    </Button>
+                                ))}
+                            </Flex>
+                        </Box>
+
+                        <Flex
+                            align="center"
+                            justify="space-between"
+                            gap={2}
+                            pt={3}
+                            borderTopWidth="1px"
+                            borderColor="border.subtle"
+                        >
+                            <Checkbox
+                                checked={popupResult}
+                                onCheckedChange={(details) => setPopupResult(!!details.checked)}
+                                colorPalette="blue"
+                                size="md"
+                                title="开启后，功能按钮执行完自动弹出结果汇总窗"
+                            >
+                                弹结果
+                            </Checkbox>
+                            <ScheduleNotifySettings />
+                        </Flex>
+                    </Card.Body>
+                </Card.Root>
+
+                {/* 列表操作条 */}
+                <Flex align="center" justify="space-between" gap={2} px={1}>
+                    <Checkbox
+                        checked={allSelected ? true : selectedAccounts.length > 0 ? 'indeterminate' : false}
+                        onCheckedChange={toggleSelectAll}
+                        colorPalette="blue"
+                        size="md"
+                    >
+                        全选账号
+                    </Checkbox>
+                    <HStack gap={1}>
+                        {userInfo?.clan && (
+                            <IconButton
+                                aria-label="导入账号"
+                                size="md"
+                                variant="outline"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <FiUpload />
+                            </IconButton>
+                        )}
+                        <IconButton
+                            aria-label={selectedAccounts.length > 0 ? '删除选中账号' : '删除全部账号'}
+                            size="md"
+                            variant="outline"
+                            colorPalette="red"
+                            onClick={() => void handleDeleteSelected()}
+                        >
+                            <FiUserMinus />
+                        </IconButton>
+                        <IconButton
+                            aria-label={creatAccountSwitch.open ? '取消创建' : '创建新账号'}
+                            size="md"
+                            variant="solid"
+                            colorPalette={creatAccountSwitch.open ? 'red' : 'green'}
+                            onClick={() => handleCreateAccount()}
+                        >
+                            {creatAccountSwitch.open ? <FiCheck /> : <FiUserPlus />}
+                        </IconButton>
+                    </HStack>
+                </Flex>
+
+                {/* 新建账号（内联，避免弹窗里输名字） */}
+                {creatAccountSwitch.open && (
+                    <Card.Root bg="bg.panel" borderRadius="2xl" shadow="sm" borderWidth="1px" borderColor="green.subtle">
+                        <Card.Body py={3} px={4} display="flex" flexDirection="column" gap={3}>
+                            <Text fontSize="sm" fontWeight="bold">新账号名称</Text>
+                            <Input
+                                autoFocus
+                                placeholder="请输入游戏账号昵称..."
+                                value={alias}
+                                onChange={(e) => setAlias(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleCreateAccount(); }}
+                                size="lg"
+                                minH="52px"
+                            />
+                            <Button minH="48px" colorPalette="green" onClick={handleCreateAccount}>创建</Button>
+                        </Card.Body>
+                    </Card.Root>
+                )}
+
+                {/* 账号列表：移动端恒为单列卡片流（表格视图在 <768px 不可用） */}
+                {loadError && !userInfo ? (
+                    <Card.Root bg="bg.panel" borderRadius="2xl" shadow="sm">
+                        <Card.Body py={8} textAlign="center">
+                            <Text color="fg.muted" mb={3}>账号列表加载失败，请检查网络后重试</Text>
+                            <Button size="sm" minH="44px" variant="outline" onClick={() => setRetryTick((t) => t + 1)}>重试</Button>
+                        </Card.Body>
+                    </Card.Root>
+                ) : !userInfo ? (
+                    <Stack gap={3}>
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <Card.Root key={i} bg="bg.panel" borderRadius="2xl" shadow="sm">
+                                <Card.Header><Skeleton height="24px" width="50%" /></Card.Header>
+                                <Card.Body><SkeletonText noOfLines={3} gap={4} /></Card.Body>
+                                <Card.Footer><Skeleton height="44px" width="100%" /></Card.Footer>
+                            </Card.Root>
+                        ))}
+                    </Stack>
+                ) : (
+                    <Stack gap={3}>
+                        {selectableAccounts.map((account) => (
+                            <AccountInfo
+                                key={account.name}
+                                account={account}
+                                onToggle={freshAccountInfo.onToggle}
+                                updateAccountInfo={updateAccountInfo}
+                                isTableView={false}
+                                mobile
+                                isSelected={selectedAccounts.includes(account.name)}
+                                onToggleSelect={() => toggleSelectAccount(account.name)}
+                                batchAccounts={batchAccounts}
+                                getOccupiedNames={occupiedNamesFactory}
+                                isBusy={busyAccounts.has(account.name)}
+                                onBusyChange={setAccountBusy}
+                                onOpenSyncConfig={(a) => {
+                                    NiceModal.show(ConfigSyncModal, { sourceAccount: a });
+                                }}
+                            />
+                        ))}
+                    </Stack>
+                )}
+
+                {/* 隐藏的 TSV 导入入口 */}
+                <Input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".tsv"
+                    onChange={handleAccountImport}
+                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                    display="none"
+                />
+
+                {/* 桌面/手机共用的确认弹窗 */}
+                <Alert leastDestructiveRef={cancelRef} isOpen={clearAccountConfirm.open} onClose={clearAccountConfirm.onClose} title="删除所有账号" body={`确定删除所有账号吗？`} onConfirm={handleClearAccounts}>
+                    {' '}
+                </Alert>
+                <Alert leastDestructiveRef={cancelRef} isOpen={deleteQQConfirm.open} onClose={deleteQQConfirm.onClose} title="删除QQ" body={`确定删除QQ${userInfo?.qq}吗？`} onConfirm={handleDeleteAccount}>
+                    {' '}
+                </Alert>
+                <Alert
+                    leastDestructiveRef={cancelRef}
+                    isOpen={dangerConfirm.open}
+                    onClose={() => {
+                        dangerConfirm.onClose();
+                        setPendingDanger(null);
+                    }}
+                    title="执行危险功能"
+                    body={`「${pendingDanger?.btn.name ?? ''}」为危险功能，确定要对 ${pendingDanger?.free.length ?? 0} 个账号执行吗？`}
+                    onConfirm={onConfirmDanger}
+                >
+                    {' '}
+                </Alert>
+            </Stack>
+        );
+    }
 
     // minW=0：允许在窄屏下收缩到子元素 min-content 以下，防止工具栏把整页撑出视口（移动端布局错乱的根因）
     return (
@@ -716,24 +1041,7 @@ export function DashBoard() {
                                 size="sm"
                                 variant="outline"
                                 colorPalette="red"
-                                onClick={() => {
-                                    if (selectedAccounts.length > 0) {
-                                        // 忙碌账号提示：正执行的账号被删，在途响应会落空（写路径互斥网不拦删除本身——删除是终止性操作，但至少告知）
-                                        const busyDel = selectedAccounts.filter((name) => busyAccountsRef.has(name));
-                                        const busyNote = busyDel.length > 0 ? `\n其中正在执行中的账号：${busyDel.join('、')}\n（删除后这些操作的结果将丢失）` : '';
-                                        if (window.confirm(`确定删除选中的 ${selectedAccounts.length} 个账号吗？${busyNote}`)) {
-                                            Promise.all(selectedAccounts.map((name) => delAccount(name)))
-                                                .then(() => {
-                                                    toaster.create({ type: 'success', title: '删除成功' });
-                                                    setSelectedAccounts([]);
-                                                    freshAccountInfo.onToggle();
-                                                })
-                                                .catch(async (err) => toaster.create({ type: 'error', title: '删除失败', description: await getErrorDescription(err) }));
-                                        }
-                                    } else {
-                                        clearAccountConfirm.onOpen();
-                                    }
-                                }}
+                                onClick={() => void handleDeleteSelected()}
                             > <FiUserMinus /> </IconButton>
                         </Tooltip>
                         <Box position="relative">

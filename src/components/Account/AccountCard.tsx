@@ -1,6 +1,6 @@
 import { AccountInfo as AccountInfoInterface } from '@interfaces/UserInfo';
-import { Box, Card, Flex, HStack, Input, Table, Text, useDisclosure } from '@chakra-ui/react';
-import { FiActivity, FiCheck, FiCopy, FiTarget, FiUpload, FiUserX, FiX } from 'react-icons/fi';
+import { Box, Button, Card, Flex, HStack, Input, Table, Text, useDisclosure } from '@chakra-ui/react';
+import { FiActivity, FiCheck, FiCopy, FiMoreHorizontal, FiTarget, FiUpload, FiUserX, FiX } from 'react-icons/fi';
 import React, { ChangeEvent, useRef } from 'react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
@@ -16,6 +16,7 @@ import { delAccount, getAccount, getAccountDailyResultList, postAccountAreaDaily
 import { getErrorDescription } from './Config';
 import { dailyCleanRegistry as handle, DISPLAY_NAME_KEY, getDisplayName, emitDailyFinished, safeSetItem, safeRemoveItem, importConfigFile, busyAccountsRef } from './accountShared';
 import { clearAreaConfigCache } from './Area';
+import { showActionSheet } from '@components/mobile/ActionSheet';
 import { RoundCheckbox, AccountTags, StatusTag } from './AccountCardParts';
 interface AccountInfoProps {
     account: AccountInfoInterface;
@@ -31,6 +32,8 @@ interface AccountInfoProps {
     isBusy?: boolean;
     onBusyChange?: (alias: string, busy: boolean) => void;
     getOccupiedNames: (selfAlias: string) => Set<string>;
+    /** 手机形态：操作收拢为「清理日常 + 结果 + 更多」，删除不再裸露在卡片头部 */
+    mobile?: boolean;
 }
 
 export function AccountInfo({
@@ -45,6 +48,7 @@ export function AccountInfo({
     isBusy,
     onBusyChange,
     getOccupiedNames,
+    mobile = false,
 }: AccountInfoProps) {
     const buttonLoading = useDisclosure();
     const alias = account.name;
@@ -347,11 +351,78 @@ export function AccountInfo({
         }
     };
 
+    /**
+     * 「更多」操作面板（仅手机形态）
+     *
+     * 桌面靠 Tooltip 暴露图标含义、删除用头部小叉；触屏没有 hover，
+     * 且头部小叉紧邻"整卡进详情"极易误触，所以手机上把低频/危险操作收进面板。
+     */
+    const handleOpenMore = async () => {
+        const key = await showActionSheet({
+            title: displayName || alias,
+            subtitle: `上次运行 ${cleanTime || '—'} · ${cleanStatus}`,
+            items: [
+                { key: 'import', label: '导入配置', icon: <FiUpload /> },
+                { key: 'sync', label: '同步配置到其他账号', icon: <FiCopy /> },
+                { key: 'delete', label: '删除账号', icon: <FiX />, danger: true },
+            ],
+        });
+        if (key === 'import') importFileRef.current?.click();
+        else if (key === 'sync') onOpenSyncConfig?.(alias);
+        else if (key === 'delete') deleteConfirm.onOpen();
+    };
+
     // 函数渲染，不要内嵌组件（否则每帧新类型，按钮整卸整挂）
     const renderActionButtons = (
         size: 'xs' | 'sm' | 'md' = 'xs',
         flexMode = false,
-    ) => (
+    ) => {
+        // 手机形态：主操作（清理日常）撑满 + 结果 + 更多；低频/危险操作收进面板
+        if (mobile) {
+            return (
+                <HStack gap={2} w="full" align="center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                        ref={importFileRef}
+                        type="file"
+                        accept=".autopcrcfg"
+                        style={{ display: 'none' }}
+                        onChange={handleImportConfigFile}
+                    />
+                    <Button
+                        flex={1}
+                        minH="44px"
+                        colorPalette="orange"
+                        variant="outline"
+                        onClick={handleCleanDaily}
+                        loading={buttonLoading.open}
+                        disabled={isBusy}
+                    >
+                        <FiTarget /> 清理日常
+                    </Button>
+                    <IconButton
+                        aria-label="运行结果"
+                        size="md"
+                        variant="outline"
+                        colorPalette="green"
+                        onClick={handleDailyResult}
+                        loading={buttonLoading.open}
+                        disabled={isBusy}
+                    >
+                        <FiActivity />
+                    </IconButton>
+                    <IconButton
+                        aria-label="更多操作"
+                        size="md"
+                        variant="outline"
+                        onClick={() => void handleOpenMore()}
+                    >
+                        <FiMoreHorizontal />
+                    </IconButton>
+                </HStack>
+            );
+        }
+
+        return (
         <HStack
             gap={flexMode ? 0 : 1}
             w={flexMode ? 'full' : undefined}
@@ -427,7 +498,8 @@ export function AccountInfo({
                 </IconButton>
             </Tooltip>
         </HStack>
-    );
+        );
+    };
 
     if (isTableView) {
         return (
@@ -636,6 +708,8 @@ export function AccountInfo({
                         </Flex>
                     </Flex>
 
+                    {/* 手机形态不在这里放删除叉：紧邻"整卡进详情"，误触代价高；改由「更多」面板承担 */}
+                    {!mobile && (
                     <Box
                         onClick={(e) => e.stopPropagation()}
                         flexShrink={0}
@@ -678,6 +752,7 @@ export function AccountInfo({
                             <FiX />
                         </IconButton>
                     </Box>
+                    )}
                 </Flex>
             </Card.Header>
 
