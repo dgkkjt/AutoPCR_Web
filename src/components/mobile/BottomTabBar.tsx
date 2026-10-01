@@ -14,10 +14,19 @@ interface TabDef {
     to: string
 }
 
-const TABS: TabDef[] = [
-    { key: 'home', label: '首页', icon: FiHome, to: DashBoardRoute.to },
-    { key: 'me', label: '我的', icon: FiUser, to: MeRoute.to },
-]
+/**
+ * ⚠️ 必须放在组件内构造，不能提到模块作用域。
+ *
+ * `Route.to` 是 Router 在 createRouter() 时通过 route.init() 赋上的；
+ * 模块作用域求值发生在 createRouter 之前，那时读到的是 undefined，
+ * 于是每一项的 to 会被快照成 undefined → navigate({to: undefined}) 静默无效。
+ */
+function buildTabs(): TabDef[] {
+    return [
+        { key: 'home', label: '首页', icon: FiHome, to: DashBoardRoute.to },
+        { key: 'me', label: '我的', icon: FiUser, to: MeRoute.to },
+    ]
+}
 
 /**
  * 移动端底部 Tab 栏
@@ -34,6 +43,7 @@ const TABS: TabDef[] = [
 export function BottomTabBar() {
     const navigate = useNavigate()
     const pathname = useRouterState({ select: (s) => s.location.pathname })
+    const tabs = buildTabs()
 
     return (
         <Flex
@@ -47,9 +57,9 @@ export function BottomTabBar() {
                 paddingBottom: SAFE_BOTTOM,
             }}
         >
-            {TABS.map((tab) => {
-                // 下钻页（如 /daily/account/xxx）仍高亮所属一级 Tab
-                const isActive = pathname === tab.to || pathname.startsWith(`${tab.to}/`)
+            {tabs.map((tab) => {
+                // to 形如 '/daily/account/'，下钻页 '/daily/account/xxx' 用前缀即可命中
+                const isActive = pathname === tab.to || pathname.startsWith(tab.to)
                 return (
                     <Flex
                         as="button"

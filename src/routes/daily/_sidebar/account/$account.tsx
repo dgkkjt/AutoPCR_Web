@@ -211,7 +211,8 @@ function AccountComponent() {
         ];
 
         return (
-            <Stack gap={3} w="full" minW={0} pb={8}>
+            // pb 预留导航球（约 148px 高）+ 底部 Tab 的位置，否则最后几行配置会被悬浮球压住
+            <Stack gap={3} w="full" minW={0} pb={{ base: 24, md: 8 }}>
                 {/* 上下文条：返回 + 账号 + 状态 */}
                 <Flex
                     align="center"

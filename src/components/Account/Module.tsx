@@ -14,6 +14,7 @@ import ModuleSyncModal from './ModuleSyncModal';
 import { clearAreaConfigCache } from './Area';
 import { toaster } from '../../components/ui/toaster';
 import { loadPopupFlag, favKey, safeGetItem, safeSetItem, DANGEROUS_AREA_NAME, busyAccountsRef, patchBusy } from './accountShared';
+import { useIsMobile } from '@components/mobile/useIsMobile';
 
 interface ModuleProps extends React.ComponentProps<typeof Card.Root> {
     alias: string,
@@ -72,6 +73,7 @@ export default function Module({ alias, areaKey, areaName, config, info, isOpen,
             setBulkBusy(false);
         }
     };
+    const isMobile = useIsMobile();
     const { open: isExpanded, onToggle: onToggleExpand } = useDisclosure({ defaultOpen: false });
     const dangerConfirm = useDisclosure();
     const isDangerous = areaName === DANGEROUS_AREA_NAME;
@@ -275,6 +277,77 @@ export default function Module({ alias, areaKey, areaName, config, info, isOpen,
         >
             {/* 手机形态：模块头部抬到 56px，折叠箭头本身就在这块热区里 */}
             <Card.Header py={3} minH={{ base: '56px', md: undefined }} cursor="pointer" onClick={handleHeaderClick}>
+                {/* 手机形态：标题/标签独占一行且允许换行（原来 truncate 会把「智能…」「领取…」截掉），
+                    操作按钮下沉到第二行，两者互不抢宽度 */}
+                {isMobile ? (
+                    <Stack gap={2} minW={0}>
+                        <Flex align="flex-start" gap={2} minW={0}>
+                            <Box onClick={(e) => e.stopPropagation()} flexShrink={0} pt={0.5}>
+                                <Checkbox
+                                    checked={!!config[info.key]}
+                                    onCheckedChange={onCheckedChange}
+                                    size="lg"
+                                    colorPalette="blue"
+                                />
+                            </Box>
+                            <Box flex="1" minW={0}>
+                                <Flex align="flex-start" gap={2} minW={0}>
+                                    <Heading
+                                        size="sm"
+                                        fontWeight="bold"
+                                        flex="1"
+                                        minW={0}
+                                        css={{ whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'left' }}
+                                    >
+                                        {info?.name}
+                                    </Heading>
+                                    <Box
+                                        onClick={handleToggleFav}
+                                        cursor="pointer"
+                                        color={config?.[`_fav_${info.key}`] ? 'yellow.400' : 'gray.400'}
+                                        fontSize="1.25rem"
+                                        lineHeight={1}
+                                        display="flex"
+                                        alignItems="center"
+                                        flexShrink={0}
+                                        p={0}
+                                    >
+                                        <FiStar fill={config?.[`_fav_${info.key}`] ? 'currentColor' : 'none'} />
+                                    </Box>
+                                </Flex>
+                                {!!info?.tags?.length && (
+                                    <HStack gap={1.5} flexWrap="wrap" mt={1.5}>
+                                        {info.tags.map((item) => (
+                                            <Tag.Root key={item} colorPalette="purple" variant="subtle" size="sm">
+                                                <Tag.Label>{item}</Tag.Label>
+                                            </Tag.Root>
+                                        ))}
+                                    </HStack>
+                                )}
+                            </Box>
+                            <Box
+                                color="fg.muted"
+                                flexShrink={0}
+                                pt={1}
+                                transition="transform 0.2s"
+                                transform={isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}
+                            >
+                                <FiChevronDown />
+                            </Box>
+                        </Flex>
+                        <HStack gap={2} flexWrap="wrap">
+                            {info?.runnable && (
+                                <Button size="sm" minH="44px" variant="surface" colorPalette='blue' loading={isOpen} onClick={handleExecuteWrapper}>执行</Button>
+                            )}
+                            {info?.runnable && (
+                                <Button size="sm" minH="44px" variant="ghost" colorPalette='blue' loading={isOpen} onClick={handleResult}>结果</Button>
+                            )}
+                            {areaKey === 'daily' && (
+                                <Button size="sm" minH="44px" variant="ghost" colorPalette='teal' loading={isOpen} onClick={handleSyncConfig} aria-label="同步配置"><FiCopy /> 同步</Button>
+                            )}
+                        </HStack>
+                    </Stack>
+                ) : (
                 <Flex align="center" wrap="wrap" gap={2}>
                     <Box onClick={(e) => e.stopPropagation()} mr={{ base: 1, md: 1 }}>
                         <Checkbox
@@ -323,6 +396,7 @@ export default function Module({ alias, areaKey, areaName, config, info, isOpen,
                         </Box>
                     </HStack>
                 </Flex>
+                )}
             </Card.Header>
 
             {/* 折叠卸载设置树省内存；Config 已回写 Area，再展开不会回到旧值 */}

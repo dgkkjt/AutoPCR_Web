@@ -20,6 +20,7 @@ import { Switch } from '../../components/ui/switch';
 import { toaster } from '../../components/ui/toaster';
 import multiSelectModal from './MultiSelectModal';
 import singleSelectModal from './SingleSelectModal';
+import { useIsMobile } from '@components/mobile/useIsMobile';
 
 interface ConfigProps {
     alias: string;
@@ -50,7 +51,59 @@ export { getErrorDescription };
 
 
 const ROW_H = '2.25rem';
+/** 手机形态的行高：36px 的桌面行高在触屏上既难点也压字 */
+const ROW_H_MOBILE = '44px';
 const SINGLE_SEARCH_THRESHOLD = 30;
+
+/**
+ * 配置行外壳
+ *
+ * 桌面：InputGroup 内联标签（startElement）+ 固定宽度控件，信息密度高。
+ * 手机：标签独占一行、控件撑满——原来「标签 + 窄控件」挤在一行时，
+ *      长标签（如「区域1双角色必须连通」）和下拉的当前值都会被压掉。
+ */
+function ConfigRowShell({
+    desc,
+    children,
+    end,
+    w = 'full',
+    inline = false,
+}: {
+    desc: string
+    children?: React.ReactNode
+    end?: React.ReactNode
+    w?: string | number
+    inline?: boolean
+}) {
+    const isMobile = useIsMobile()
+
+    if (isMobile) {
+        if (inline) {
+            return (
+                <Flex w="full" minH={ROW_H_MOBILE} align="center" gap={3}>
+                    <Text fontSize="sm" flex="1" minW={0} css={{ wordBreak: 'break-word' }}>
+                        {desc}
+                    </Text>
+                    <Box flexShrink={0}>{end ?? children}</Box>
+                </Flex>
+            )
+        }
+        return (
+            <Stack gap={1.5} w="full" py={1}>
+                <Text fontSize="sm" color="fg.muted" css={{ wordBreak: 'break-word' }}>
+                    {desc}
+                </Text>
+                <Box w="full">{children}</Box>
+            </Stack>
+        )
+    }
+
+    return (
+        <InputGroup w={w} minH={ROW_H} alignItems="center" startElement={desc} endElement={end}>
+            {children}
+        </InputGroup>
+    )
+}
 
 /** 统一的配置保存流：乐观写父级 → 排队保存 → 成功/失败 toast → 失败回滚父级与显示。
  *  各控件（Bool/Int/SingleSearch/Multi/Time/Text）共用，消灭五份手写模板。 */
@@ -174,12 +227,10 @@ function ConfigBool({ alias, value, info, onConfigUpdate }: ConfigProps) {
     const [checked, , save] = useConfigState(alias, info.key, value as boolean, onConfigUpdate);
 
     return (
-        <InputGroup
-            w="full"
-            minH={ROW_H}
-            alignItems="center"
-            startElement={info.desc}
-            endElement={
+        <ConfigRowShell
+            desc={info.desc}
+            inline
+            end={
                 <Switch
                     id={info.key}
                     size="md"
@@ -195,6 +246,7 @@ function ConfigInt({ alias, value, info, onConfigUpdate }: ConfigProps) {
     const candNums = (info.candidates || []).map((c) => c.value).filter((v): v is number => typeof v === 'number' && !isNaN(v));
     const min = candNums.length ? Math.min(...candNums) : 0;
     const max = candNums.length ? Math.max(...candNums) : Number.MAX_SAFE_INTEGER;
+    const rowH = useIsMobile() ? ROW_H_MOBILE : ROW_H;
 
     const [numStr, setNumStr] = useState(value === undefined ? '' : String(value));
     const { commit } = useConfigSaveFlow(alias, info.key, value, onConfigUpdate);
@@ -231,28 +283,28 @@ function ConfigInt({ alias, value, info, onConfigUpdate }: ConfigProps) {
     };
 
     return (
-        <InputGroup w="full" minH={ROW_H} alignItems="center" startElement={info.desc}>
+        <ConfigRowShell desc={info.desc}>
             <Box
-                w="18%"
-                h={ROW_H}
-                maxH={ROW_H}
+                w={{ base: 'full', md: '18%' }}
+                h={rowH}
+                maxH={rowH}
                 display="flex"
                 alignItems="center"
                 css={{
                     '& [data-part="root"]': {
-                        height: ROW_H,
-                        maxHeight: ROW_H,
+                        height: rowH,
+                        maxHeight: rowH,
                         width: '100%',
                     },
                     '& [data-part="input"]': {
-                        height: ROW_H,
-                        minHeight: ROW_H,
-                        maxHeight: ROW_H,
+                        height: rowH,
+                        minHeight: rowH,
+                        maxHeight: rowH,
                         py: 0,
                     },
                     '& [data-part="control"]': {
-                        height: ROW_H,
-                        maxHeight: ROW_H,
+                        height: rowH,
+                        maxHeight: rowH,
                         display: 'flex',
                         flexDirection: 'column',
                     },
@@ -272,13 +324,13 @@ function ConfigInt({ alias, value, info, onConfigUpdate }: ConfigProps) {
                     max={max}
                     size="sm"
                     w="full"
-                    h={ROW_H}
-                    maxH={ROW_H}
+                    h={rowH}
+                    maxH={rowH}
                 >
-                    <NumberInputField h={ROW_H} minH={ROW_H} maxH={ROW_H} py={0} onBlur={handleBlur} />
+                    <NumberInputField h={rowH} minH={rowH} maxH={rowH} py={0} onBlur={handleBlur} />
                 </NumberInput>
             </Box>
-        </InputGroup>
+        </ConfigRowShell>
     );
 }
 
@@ -323,19 +375,27 @@ function ConfigSingleSearch({ alias, value, info, onConfigUpdate }: ConfigProps)
     };
 
     return (
-        <InputGroup
+        <ConfigRowShell
+            desc={info.desc}
             w="1/3"
-            minH={ROW_H}
-            alignItems="center"
-            startElement={info.desc}
-            endElement={
-                <Button size="sm" h={ROW_H} onClick={handleClick}>
+            end={
+                <Button size="sm" h={{ base: ROW_H_MOBILE, md: ROW_H }} onClick={handleClick}>
                     选择
                 </Button>
             }
         >
-            <Input h={ROW_H} value={displayText} readOnly onClick={handleClick} cursor="pointer" />
-        </InputGroup>
+            <Flex w="full" gap={2} align="center">
+                <Input
+                    h={{ base: ROW_H_MOBILE, md: ROW_H }}
+                    flex="1"
+                    minW={0}
+                    value={displayText}
+                    readOnly
+                    onClick={handleClick}
+                    cursor="pointer"
+                />
+            </Flex>
+        </ConfigRowShell>
     );
 }
 
@@ -343,10 +403,10 @@ function ConfigSingleSelect({ alias, value, info, onConfigUpdate }: ConfigProps)
     const [selectValue, , save] = useConfigState(alias, info.key, value as string | number, onConfigUpdate);
 
     return (
-        <InputGroup w="1/4" minH={ROW_H} alignItems="center" startElement={info.desc}>
+        <ConfigRowShell desc={info.desc} w="1/4">
             <NativeSelect.Root size="sm" w="full" flex="1">
                 <NativeSelect.Field
-                    h={ROW_H}
+                    h={{ base: ROW_H_MOBILE, md: ROW_H }}
                     id={info.key}
                     value={selectValue}
                     onChange={(e) => {
@@ -369,7 +429,7 @@ function ConfigSingleSelect({ alias, value, info, onConfigUpdate }: ConfigProps)
                 </NativeSelect.Field>
                 <NativeSelect.Indicator />
             </NativeSelect.Root>
-        </InputGroup>
+        </ConfigRowShell>
     );
 }
 
@@ -415,7 +475,7 @@ function ConfigMulti({ alias, value, info, onConfigUpdate }: ConfigProps) {
     };
 
     return (
-        <InputGroup w="full" minH={ROW_H} alignItems="center" startElement={info.desc}>
+        <ConfigRowShell desc={info.desc}>
             <ChakraCheckbox.Group
                 value={groupValue}
                 w="full"
@@ -436,7 +496,7 @@ function ConfigMulti({ alias, value, info, onConfigUpdate }: ConfigProps) {
                     ))}
                 </Flex>
             </ChakraCheckbox.Group>
-        </InputGroup>
+        </ConfigRowShell>
     );
 }
 
@@ -468,17 +528,17 @@ function ConfigTime({ alias, value, info, onConfigUpdate }: ConfigProps) {
     };
 
     return (
-        <InputGroup w="min" minH={ROW_H} alignItems="center" startElement={info.desc}>
+        <ConfigRowShell desc={info.desc} w="min" inline>
             <Input
                 type="time"
-                h={ROW_H}
+                h={{ base: ROW_H_MOBILE, md: ROW_H }}
                 size="sm"
                 value={timeStr}
                 onChange={(e) => setTimeStr(e.target.value)}
                 onBlur={handleBlur}
                 id={info.key}
             />
-        </InputGroup>
+        </ConfigRowShell>
     );
 }
 
@@ -563,25 +623,27 @@ function ConfigMultiSearch({ alias, value, info, onConfigUpdate }: ConfigProps) 
     };
 
     return (
-        <InputGroup
+        <ConfigRowShell
+            desc={info.desc}
             w="1/3"
-            minH={ROW_H}
-            alignItems="center"
-            startElement={info.desc}
-            endElement={
-                <Button size="sm" h={ROW_H} onClick={handleClick}>
+            end={
+                <Button size="sm" h={{ base: ROW_H_MOBILE, md: ROW_H }} onClick={handleClick}>
                     选择
                 </Button>
             }
         >
-            <Input
-                h={ROW_H}
-                value={displayValue.join(', ')}
-                readOnly
-                onClick={handleClick}
-                cursor="pointer"
-            />
-        </InputGroup>
+            <Flex w="full" gap={2} align="center">
+                <Input
+                    h={{ base: ROW_H_MOBILE, md: ROW_H }}
+                    flex="1"
+                    minW={0}
+                    value={displayValue.join(', ')}
+                    readOnly
+                    onClick={handleClick}
+                    cursor="pointer"
+                />
+            </Flex>
+        </ConfigRowShell>
     );
 }
 

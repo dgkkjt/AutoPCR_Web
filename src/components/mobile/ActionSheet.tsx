@@ -73,12 +73,15 @@ const ActionSheetModal = NiceModal.create<ActionSheetProps>(
                     pt={2}
                     boxShadow="dark-lg"
                     animation={`${slideUp} 0.22s ease-out`}
+                    display="flex"
+                    flexDirection="column"
+                    maxH="88vh"
                     css={{ paddingBottom: `calc(12px + ${SAFE_BOTTOM})` }}
                 >
                     <Box w="38px" h="4px" borderRadius="full" bg="border.subtle" mx="auto" mb={2} />
 
                     {(title || subtitle) && (
-                        <Box px={2} pb={2}>
+                        <Box px={2} pb={2} flexShrink={0}>
                             {title && (
                                 <Text fontSize="16px" fontWeight="semibold" color="fg">
                                     {title}
@@ -92,7 +95,9 @@ const ActionSheetModal = NiceModal.create<ActionSheetProps>(
                         </Box>
                     )}
 
-                    <Box>
+                    {/* 选项区可滚动：模块目录/账号选择这类列表可能很长，
+                        不给高度上限 + overflow 会把「取消」按钮和底部安全区一起顶出屏幕 */}
+                    <Box maxH="56vh" overflowY="auto" css={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
                         {items.map((item) => (
                             <Flex
                                 key={item.key}
@@ -122,7 +127,7 @@ const ActionSheetModal = NiceModal.create<ActionSheetProps>(
                         ))}
                     </Box>
 
-                    <Box pt={2}>
+                    <Box pt={2} flexShrink={0}>
                         <Button
                             w="full"
                             size="lg"
